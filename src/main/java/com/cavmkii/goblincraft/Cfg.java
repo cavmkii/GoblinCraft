@@ -1,0 +1,248 @@
+package com.cavmkii.goblincraft;
+
+import java.io.IOException;
+import java.io.Reader;
+import java.io.Writer;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Properties;
+import java.util.function.Consumer;
+
+/**
+ * Settings, read from config/goblincraft/goblincraft.properties (written with defaults and comments on
+ * first run). Everything runs on the server, so only the server's file matters; clients need no config.
+ */
+public final class Cfg {
+    public enum ScalingMode { SKILLS, BOSSES, HIGHEST }
+
+    // General
+    public static boolean joeEnabled = true;
+    public static boolean seanEnabled = true;
+    public static double joeRespawnMinutes = 10;
+    public static double seanRespawnMinutes = 20;
+    public static double spawnDistanceMin = 60;
+    public static double spawnDistanceMax = 140;
+    public static double strandedMinutes = 5;
+
+    // Joe
+    public static double provokeSeconds = 90;
+    public static String ragePhrases = "babywars,baby wars";
+    public static double rageSeconds = 120;
+    public static boolean stealEnabled = true;
+    public static double stealCooldownSeconds = 180;
+    public static int stealMaxStack = 10;
+    public static double tauntIntervalMin = 18;
+    public static double tauntIntervalMax = 40;
+    public static double seanSeekChance = 0.5;
+    public static double joeScale = 0.8;
+    public static boolean pukeEnabled = true;
+    public static double pukeIntervalMin = 60;
+    public static double pukeIntervalMax = 150;
+    public static double restrainingDistance = 15;
+
+    // Scaling
+    public static ScalingMode scaling = ScalingMode.HIGHEST;
+    public static int skillsMaxLevel = 50;
+    public static String bossAdvancements = String.join(",",
+            "minecraft:story/smelt_iron",
+            "minecraft:story/enter_the_nether",
+            "minecraft:nether/obtain_blaze_rod",
+            "minecraft:story/follow_ender_eye",
+            "minecraft:end/kill_dragon",
+            "minecraft:nether/create_beacon",
+            "minecraft:nether/netherite_armor");
+    public static double healthMultMin = 0.6;
+    public static double healthMultMax = 10;
+    public static double damageMultMin = 0.25;
+    public static double damageMultMax = 2.5;
+
+    // Sean
+    public static double seanHealth = 1000;
+    public static double seanNonPlayerDamageTaken = 0.1;
+
+    // Fun
+    public static boolean snowLineEnabled = true;
+    public static String snowLine = "awe man the sky is cumming!";
+    public static double snowLineCooldownMinutes = 10;
+
+    // Baby Wars
+    public static boolean warEnabled = true;
+    public static int warTriggerCount = 3;
+    public static double warTriggerWindowMinutes = 60;
+    public static int warWaves = 4;
+    public static int warWaveBaseSize = 6;
+    public static int warWaveGrowth = 3;
+    public static double warWaveIntervalSeconds = 75;
+    public static double warMaxMinutes = 15;
+    public static double warCooldownMinutes = 30;
+    public static int warSecurityCount = 3;
+    public static double babyHealthScale = 0.35;
+    public static double babyDamageScale = 0.5;
+
+    // Fight
+    public static double fightTriggerRange = 35;
+    public static double fightSeconds = 45;
+    public static double fightCooldownMinutes = 10;
+    public static double bystanderDamageMultiplier = 0.5;
+
+    private record Entry(String section, String key, String comment, Consumer<String> setter, java.util.function.Supplier<String> getter) {}
+
+    private static final List<Entry> ENTRIES = new ArrayList<>();
+
+    static {
+        b("General", "JoeEnabled", "Spawn and maintain Joe in the world.", v -> joeEnabled = v, () -> joeEnabled);
+        b("General", "SeanEnabled", "Spawn and maintain Sean in the world.", v -> seanEnabled = v, () -> seanEnabled);
+        d("General", "JoeRespawnMinutes", "Minutes after Joe dies before he respawns.", v -> joeRespawnMinutes = v, () -> joeRespawnMinutes);
+        d("General", "SeanRespawnMinutes", "Minutes after Sean dies before he respawns.", v -> seanRespawnMinutes = v, () -> seanRespawnMinutes);
+        d("General", "SpawnDistanceMin", "Minimum distance (blocks) from a player that Joe/Sean (re)spawn at.", v -> spawnDistanceMin = v, () -> spawnDistanceMin);
+        d("General", "SpawnDistanceMax", "Maximum distance (blocks) from a player that Joe/Sean (re)spawn at. Spots outside loaded chunks are skipped.", v -> spawnDistanceMax = v, () -> spawnDistanceMax);
+        d("General", "StrandedMinutes", "If no player has been within 128 blocks of Joe or Sean for this long, they turn up near a random player again.", v -> strandedMinutes = v, () -> strandedMinutes);
+
+        d("Joe", "ProvokeSeconds", "How long Joe stays hostile to a player after that player hits him.", v -> provokeSeconds = v, () -> provokeSeconds);
+        s("Joe", "RagePhrases", "Comma-separated chat phrases (case and punctuation ignored) that send Joe into a rage against everyone.", v -> ragePhrases = v, () -> ragePhrases);
+        d("Joe", "RageSeconds", "How long a rage phrase keeps Joe hostile to all players.", v -> rageSeconds = v, () -> rageSeconds);
+        b("Joe", "StealEnabled", "Whether Joe pickpockets players.", v -> stealEnabled = v, () -> stealEnabled);
+        d("Joe", "StealCooldownSeconds", "Minimum seconds between thefts.", v -> stealCooldownSeconds = v, () -> stealCooldownSeconds);
+        i("Joe", "StealMaxStack", "Most items Joe takes from a single stack per theft.", v -> stealMaxStack = v, () -> stealMaxStack);
+        d("Joe", "TauntIntervalMin", "Minimum seconds between Joe's insults.", v -> tauntIntervalMin = v, () -> tauntIntervalMin);
+        d("Joe", "TauntIntervalMax", "Maximum seconds between Joe's insults.", v -> tauntIntervalMax = v, () -> tauntIntervalMax);
+        d("Joe", "Scale", "Joe's size relative to a normal-sized mob (0.3-3).", v -> joeScale = v, () -> joeScale);
+        b("Joe", "PukeEnabled", "Joe occasionally throws up when players are nearby.", v -> pukeEnabled = v, () -> pukeEnabled);
+        d("Joe", "PukeIntervalMin", "Minimum seconds between Joe's vomiting fits.", v -> pukeIntervalMin = v, () -> pukeIntervalMin);
+        d("Joe", "PukeIntervalMax", "Maximum seconds between Joe's vomiting fits.", v -> pukeIntervalMax = v, () -> pukeIntervalMax);
+        d("Joe", "SeanSeekChance", "Chance (0-1) that Joe's next wander target is Sean's last known position.", v -> seanSeekChance = v, () -> seanSeekChance);
+        d("Joe", "RestrainingOrderDistance", "How far (blocks) Joe must stay from anyone carrying the Restraining Order.", v -> restrainingDistance = v, () -> restrainingDistance);
+
+        s("Scaling", "Mode", "What 'player level' means for Joe's scaling. SKILLS = highest XP level among players within 80 blocks. BOSSES = progression advancements earned by any online player. HIGHEST = whichever is greater.",
+                v -> scaling = ScalingMode.valueOf(v.trim().toUpperCase(Locale.ROOT)), () -> scaling.name());
+        i("Scaling", "SkillsMaxLevel", "XP level that counts as maximum for SKILLS scaling.", v -> skillsMaxLevel = v, () -> skillsMaxLevel);
+        s("Scaling", "BossAdvancements", "Comma-separated advancements that stand in for Valheim's bosses in BOSSES scaling.", v -> bossAdvancements = v, () -> bossAdvancements);
+        d("Scaling", "HealthMultiplierMin", "Joe's health multiplier at level 0.", v -> healthMultMin = v, () -> healthMultMin);
+        d("Scaling", "HealthMultiplierMax", "Joe's health multiplier at max level.", v -> healthMultMax = v, () -> healthMultMax);
+        d("Scaling", "DamageMultiplierMin", "Joe's damage multiplier at level 0.", v -> damageMultMin = v, () -> damageMultMin);
+        d("Scaling", "DamageMultiplierMax", "Joe's damage multiplier at max level.", v -> damageMultMax = v, () -> damageMultMax);
+
+        d("Sean", "Health", "Sean's max health (Minecraft caps max health at 1024). Applied when he spawns.", v -> seanHealth = v, () -> seanHealth);
+        d("Sean", "NonPlayerDamageTaken", "Multiplier on damage Sean takes from ordinary mobs, so zombies don't keep killing the shop.", v -> seanNonPlayerDamageTaken = v, () -> seanNonPlayerDamageTaken);
+
+        b("Fun", "SnowLineEnabled", "Your character says SnowLine in chat when it starts snowing where you are.", v -> snowLineEnabled = v, () -> snowLineEnabled);
+        s("Fun", "SnowLine", "What your character says when it starts snowing.", v -> snowLine = v, () -> snowLine);
+        d("Fun", "SnowLineCooldownMinutes", "Minimum minutes between snow lines.", v -> snowLineCooldownMinutes = v, () -> snowLineCooldownMinutes);
+
+        b("BabyWars", "Enabled", "Saying the rage phrase enough times starts the Baby Wars.", v -> warEnabled = v, () -> warEnabled);
+        i("BabyWars", "TriggerCount", "How many times 'baby wars' must be said (by anyone) within the window to start the war.", v -> warTriggerCount = v, () -> warTriggerCount);
+        d("BabyWars", "TriggerWindowMinutes", "The window for TriggerCount, in minutes.", v -> warTriggerWindowMinutes = v, () -> warTriggerWindowMinutes);
+        i("BabyWars", "Waves", "Number of baby waves.", v -> warWaves = v, () -> warWaves);
+        i("BabyWars", "WaveBaseSize", "Babies in the first wave.", v -> warWaveBaseSize = v, () -> warWaveBaseSize);
+        i("BabyWars", "WaveGrowth", "Extra babies per later wave.", v -> warWaveGrowth = v, () -> warWaveGrowth);
+        d("BabyWars", "WaveIntervalSeconds", "Next wave comes after this long, or sooner once most of the current wave is dead.", v -> warWaveIntervalSeconds = v, () -> warWaveIntervalSeconds);
+        d("BabyWars", "MaxMinutes", "The war ends after this long no matter what.", v -> warMaxMinutes = v, () -> warMaxMinutes);
+        d("BabyWars", "CooldownMinutes", "Minutes before another war can start.", v -> warCooldownMinutes = v, () -> warCooldownMinutes);
+        i("BabyWars", "SecurityCount", "How many of Sean's Security guards show up.", v -> warSecurityCount = v, () -> warSecurityCount);
+        d("BabyWars", "BabyHealthScale", "Baby health relative to Joe's scaled health.", v -> babyHealthScale = v, () -> babyHealthScale);
+        d("BabyWars", "BabyDamageScale", "Baby damage relative to Joe's scaled damage.", v -> babyDamageScale = v, () -> babyDamageScale);
+
+        d("Fight", "TriggerRange", "Joe and Sean start fighting when this close (blocks).", v -> fightTriggerRange = v, () -> fightTriggerRange);
+        d("Fight", "DurationSeconds", "Length of a fight.", v -> fightSeconds = v, () -> fightSeconds);
+        d("Fight", "CooldownMinutes", "Minutes before they can fight again.", v -> fightCooldownMinutes = v, () -> fightCooldownMinutes);
+        d("Fight", "BystanderDamageMultiplier", "Multiplier on spell damage to anyone other than Joe and Sean caught in the blast. 0 disables.", v -> bystanderDamageMultiplier = v, () -> bystanderDamageMultiplier);
+    }
+
+    private Cfg() {}
+
+    public static Path dir() {
+        return net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir().resolve("goblincraft");
+    }
+
+    private static Path file() {
+        return dir().resolve("goblincraft.properties");
+    }
+
+    /** Reads the file (keeping defaults for missing or bad values), then rewrites it so new keys show up. */
+    public static String load() {
+        Path path = file();
+        List<String> problems = new ArrayList<>();
+        try {
+            Properties props = new Properties();
+            if (Files.exists(path)) {
+                try (Reader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
+                    props.load(reader);
+                }
+            }
+            for (Entry entry : ENTRIES) {
+                String raw = props.getProperty(entry.section + "." + entry.key);
+                if (raw == null) {
+                    continue;
+                }
+                try {
+                    entry.setter.accept(raw.trim());
+                } catch (RuntimeException e) {
+                    problems.add(entry.section + "." + entry.key + "=" + raw);
+                }
+            }
+            write(path);
+        } catch (IOException e) {
+            return "Couldn't read " + path + ", using defaults: " + e.getMessage();
+        }
+        return problems.isEmpty() ? "Loaded " + path : "Loaded " + path + "; ignored bad values: " + String.join(", ", problems);
+    }
+
+    private static void write(Path path) throws IOException {
+        Files.createDirectories(path.getParent());
+        Map<String, List<Entry>> bySection = new LinkedHashMap<>();
+        for (Entry entry : ENTRIES) {
+            bySection.computeIfAbsent(entry.section, k -> new ArrayList<>()).add(entry);
+        }
+        try (Writer w = Files.newBufferedWriter(path, StandardCharsets.UTF_8)) {
+            w.write("# GoblinCraft settings. Server-side only. Reload in-game with /goblincraft reload\n");
+            for (Map.Entry<String, List<Entry>> section : bySection.entrySet()) {
+                w.write("\n# ---- " + section.getKey() + "\n");
+                for (Entry entry : section.getValue()) {
+                    w.write("# " + entry.comment + "\n");
+                    w.write(entry.section + "." + entry.key + "=" + escape(entry.getter.get()) + "\n");
+                }
+            }
+        }
+    }
+
+    private static String escape(String value) {
+        StringBuilder sb = new StringBuilder();
+        for (char c : value.toCharArray()) {
+            if (c == '\\' || c == '=' || c == ':' || c == '#' || c == '!') {
+                sb.append('\\');
+            }
+            sb.append(c);
+        }
+        if (sb.length() > 0 && sb.charAt(0) == ' ') {
+            sb.insert(0, '\\');
+        }
+        return sb.toString();
+    }
+
+    private static void b(String section, String key, String comment, Consumer<Boolean> set, java.util.function.Supplier<Boolean> get) {
+        ENTRIES.add(new Entry(section, key, comment, v -> {
+            if (!v.equalsIgnoreCase("true") && !v.equalsIgnoreCase("false")) {
+                throw new IllegalArgumentException(v);
+            }
+            set.accept(Boolean.parseBoolean(v));
+        }, () -> String.valueOf(get.get())));
+    }
+
+    private static void d(String section, String key, String comment, Consumer<Double> set, java.util.function.Supplier<Double> get) {
+        ENTRIES.add(new Entry(section, key, comment, v -> set.accept(Double.parseDouble(v)), () -> String.valueOf(get.get())));
+    }
+
+    private static void i(String section, String key, String comment, Consumer<Integer> set, java.util.function.Supplier<Integer> get) {
+        ENTRIES.add(new Entry(section, key, comment, v -> set.accept(Integer.parseInt(v)), () -> String.valueOf(get.get())));
+    }
+
+    private static void s(String section, String key, String comment, Consumer<String> set, java.util.function.Supplier<String> get) {
+        ENTRIES.add(new Entry(section, key, comment, set, get));
+    }
+}

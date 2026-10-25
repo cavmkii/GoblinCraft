@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "goblincraft",
+  "version": "${version}",
+  "name": "GoblinCraft",
+  "description": "Joe the goblin, Sean the travelling merchant, and the Baby Wars. A port of ValheimGoblinPack.",
+  "authors": ["cavmkii"],
+  "contact": {
+    "sources": "https://github.com/cavmkii/GoblinCraft"
+  },
+  "license": "All-Rights-Reserved",
+  "environment": "*",
+  "entrypoints": {
+    "main": ["com.cavmkii.goblincraft.GoblinCraft"],
+    "client": ["com.cavmkii.goblincraft.client.GoblinCraftClient"]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "~1.21.1",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}
