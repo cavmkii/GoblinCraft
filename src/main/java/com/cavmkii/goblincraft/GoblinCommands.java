@@ -1,5 +1,6 @@
 package com.cavmkii.goblincraft;
 
+import com.cavmkii.goblincraft.entity.Wander;
 import com.cavmkii.goblincraft.world.WorldDirector;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.context.CommandContext;
@@ -46,9 +47,10 @@ public final class GoblinCommands {
             ctx.getSource().sendFailure(Component.literal("Run this as a player in the overworld."));
             return 0;
         }
-        Vec3 look = player.getLookAngle().multiply(1, 0, 1).normalize().scale(4);
-        BlockPos spot = BlockPos.containing(player.position().add(look));
-        director(ctx).replace(kind, spot);
+        Vec3 look = player.getLookAngle().multiply(1, 0, 1).normalize().scale(kind == WorldDirector.Kind.JOE ? 4 : 7);
+        // Stand it on the ground, not at the player's height: on a slope that's inside a block.
+        BlockPos spot = Wander.surface(player.serverLevel(), player.position().add(look));
+        director(ctx).replace(kind, spot != null ? spot : player.blockPosition());
         return reply(ctx, "Summoning " + (kind == WorldDirector.Kind.JOE ? "Joe" : "Sean") + ".");
     }
 

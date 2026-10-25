@@ -20,7 +20,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * One of Sean's Security guards. Stays near Sean (or the war camp) and fights the babies and Joe.
+ * One of Sean's Security guards. Stays near Sean (or the war camp) and fights the babies.
  * Leaves people in Sean's Merch alone and goes after everyone else. Only exists during a war.
  */
 public class SeanSecurity extends PathfinderMob {
@@ -61,10 +61,10 @@ public class SeanSecurity extends PathfinderMob {
         goalSelector.addGoal(8, new LookAtPlayerGoal(this, Player.class, 8f));
         goalSelector.addGoal(9, new RandomLookAroundGoal(this));
 
-        targetSelector.addGoal(1, new HurtByTargetGoal(this, SeanSecurity.class, Sean.class));
+        // Joe is left alone: at low levels three guards would kill him in seconds and end the war.
+        targetSelector.addGoal(1, new HurtByTargetGoal(this, SeanSecurity.class, Sean.class, Joe.class));
         targetSelector.addGoal(2, new NearestAttackableTargetGoal<>(this, BabyGoblin.class, 10, false, false, null));
-        targetSelector.addGoal(3, new NearestAttackableTargetGoal<>(this, Joe.class, 10, false, false, null));
-        targetSelector.addGoal(4, new NearestAttackableTargetGoal<>(this, Player.class, 10, true, false,
+        targetSelector.addGoal(3, new NearestAttackableTargetGoal<>(this, Player.class, 10, true, false,
                 target -> target instanceof Player player && isHostileTo(player)));
     }
 

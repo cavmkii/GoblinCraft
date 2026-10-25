@@ -53,7 +53,7 @@ Say "baby wars" in chat three times within an hour (anyone, in total; `BabyWars.
   - **Binky Berserker:** bigger and tougher, from wave 2.
 
   They scale with progression like Joe (`BabyHealthScale` / `BabyDamageScale`) and drop only a few gold nuggets.
-- **Sean** arrives on the far side with **Sean's Security** (3 guards in iron), who fight the babies and Joe.
+- **Sean** arrives on the far side with **Sean's Security** (3 guards in iron), who fight the babies.
 - **Picking a side:**
   - **Baby Bonnet:** Joe drops one into the inventory of everyone who said the phrase. Wear it and the babies and Joe leave you alone, but Sean's Security attacks you.
   - **Merch:** Sean's shirt. Security leaves you alone, but the babies still come for you.
@@ -155,10 +155,17 @@ Item icons reuse vanilla textures (honey bottle, crossbow, paper and so on) thro
 
 ## Verification status
 
-**This hasn't been compiled against Minecraft yet, and it hasn't been run.** It was written in an environment that couldn't reach `maven.fabricmc.net` or Mojang's servers, so Loom couldn't fetch Minecraft. What was checked:
+It builds cleanly (no compiler warnings) against Minecraft 1.21.1, Loom 1.11.8, Fabric Loader 0.16.9 and Fabric API 0.116.17+1.21.1. It's been run on a dev server and a dev client under a software-rendered virtual display. What was seen working:
 
-- Every Java file parses (javac reports no syntax errors).
-- The config and `joe_lines.txt` loaders compile and round-trip correctly against a stub of the Fabric loader.
-- All JSON resources parse.
+- **Uniqueness:** a second summoned Joe removes itself. A baby summoned with no war on removes itself.
+- **Death and respawn:** killing Joe starts the 10-minute respawn timer, and a Joe summoned during the timer removes itself. The state is saved to `data/goblincraft.dat`.
+- **The duel:** Joe and Sean start fighting when close. Fireballs and lightning render, damage lands, and it ends in a stalemate with both end-of-fight lines.
+- **Rendering:** Joe as a green piglin, the toddler babies, Sean in trader robes, the guards, and the war camp (cauldron on campfire, totem, banner).
+- **Speech:** Joe's taunts and puke lines, and Sean's greeting and pitch, show in chat.
+- **The Baby Wars:** the title, the thunderstorm, the camp, the bonnet handed out, waves 1 to 4, and cursing a wave at the cauldron ("cursed Joe's next wave: Slow!"). A full war ran to "The last baby has fallen" and the camp was removed.
+- **The snow line** fired when the war's storm started snowing on the player.
+- **Sean's trade screen** opens with all six offers.
 
-Expect the first `./gradlew build` to turn up some API mismatches. They're most likely where 1.21.1 signatures are easy to misremember: `Model.renderToBuffer` taking an `int` color, the `Arrow` and `MerchantOffer` constructors, `ArmorItem.getDefaultAttributeModifiers`, `FoodProperties.Builder.usingConvertsTo` and `SavedData.Factory`. The library versions in `gradle.properties` (Loom 1.10-SNAPSHOT, Loader 0.16.9, Fabric API 0.102.0+1.21.1) should be checked against [fabricmc.net/develop](https://fabricmc.net/develop) too.
+Not exercised yet: pickpocketing and the stash drop, the Restraining Order, rage from chat, the Glock, Soda and Diddy Oil, and the stranded-NPC relocation. These need a real player wandering around for a while. Treat a first real session as a test of those.
+
+On start-up the log shows `No data fixer registered for goblincraft:...` once per entity. That's Minecraft noting that modded entities have no data-fixer schema. It's harmless and common to Fabric mods.

@@ -60,7 +60,7 @@ public class Joe extends PathfinderMob {
     private long fleeUntil;
     private long nextRestrainedLine;
     private long stealCooldownUntil;
-    private int displayLevel;
+    private int displayLevel = -1;
 
     public Joe(EntityType<? extends Joe> type, Level level) {
         super(type, level);
@@ -94,10 +94,9 @@ public class Joe extends PathfinderMob {
         goalSelector.addGoal(8, new LookAtPlayerGoal(this, Player.class, 8f));
         goalSelector.addGoal(9, new RandomLookAroundGoal(this));
 
-        targetSelector.addGoal(1, new HurtByTargetGoal(this, Sean.class, BabyGoblin.class));
+        targetSelector.addGoal(1, new HurtByTargetGoal(this, Sean.class, BabyGoblin.class, SeanSecurity.class));
         targetSelector.addGoal(2, new NearestAttackableTargetGoal<>(this, Player.class, 10, true, false,
                 target -> target instanceof Player player && isHostileTo(player)));
-        targetSelector.addGoal(3, new NearestAttackableTargetGoal<>(this, SeanSecurity.class, 10, true, false, null));
     }
 
     @Override
