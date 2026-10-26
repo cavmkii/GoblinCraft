@@ -14,13 +14,33 @@ public final class TarkovData {
     public boolean starterGiven;
     /** Intel level of the last hideout you were in (home isn't loaded while you're out). */
     public int lastIntel;
+    /** Health of each body part as a fraction of its share (see {@link BodyPart}). */
+    public final float[] body = {1, 1, 1, 1, 1, 1, 1};
+    /** Conditions per body part, as {@link Body} bit flags. */
+    public final int[] conditions = new int[7];
+    public int painkillerTicks;
 
     public static final Codec<TarkovData> CODEC = RecordCodecBuilder.create(i -> i.group(
             Codec.STRING.optionalFieldOf("tier", "ALPHA").forGetter(d -> d.tier.name()),
             ItemStack.OPTIONAL_CODEC.listOf().optionalFieldOf("secure", List.of()).forGetter(d -> new ArrayList<>(d.secure)),
             Codec.BOOL.optionalFieldOf("starterGiven", false).forGetter(d -> d.starterGiven),
-            Codec.INT.optionalFieldOf("lastIntel", 0).forGetter(d -> d.lastIntel)
-    ).apply(i, (tier, secure, starter, intel) -> {
+            Codec.INT.optionalFieldOf("lastIntel", 0).forGetter(d -> d.lastIntel),
+            Codec.FLOAT.listOf().optionalFieldOf("body", List.of()).forGetter(d -> {
+                List<Float> list = new ArrayList<>();
+                for (float f : d.body) {
+                    list.add(f);
+                }
+                return list;
+            }),
+            Codec.INT.listOf().optionalFieldOf("conditions", List.of()).forGetter(d -> {
+                List<Integer> list = new ArrayList<>();
+                for (int c : d.conditions) {
+                    list.add(c);
+                }
+                return list;
+            }),
+            Codec.INT.optionalFieldOf("painkiller", 0).forGetter(d -> d.painkillerTicks)
+    ).apply(i, (tier, secure, starter, intel, body, conditions, painkiller) -> {
         TarkovData d = new TarkovData();
         try {
             d.tier = SecureTier.valueOf(tier);
@@ -32,6 +52,13 @@ public final class TarkovData {
         }
         d.starterGiven = starter;
         d.lastIntel = intel;
+        for (int p = 0; p < body.size() && p < d.body.length; p++) {
+            d.body[p] = body.get(p);
+        }
+        for (int p = 0; p < conditions.size() && p < d.conditions.length; p++) {
+            d.conditions[p] = conditions.get(p);
+        }
+        d.painkillerTicks = painkiller;
         return d;
     }));
 }

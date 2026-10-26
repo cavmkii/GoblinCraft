@@ -32,6 +32,15 @@ public final class TarkovContent {
     public static final Item SECURE_GAMMA = secure("secure_gamma", SecureTier.GAMMA);
     public static final Item SECURE_KAPPA = secure("secure_kappa", SecureTier.KAPPA);
 
+    public static final java.util.Map<Med, Item> MEDS = new java.util.EnumMap<>(Med.class);
+
+    static {
+        for (Med med : Med.values()) {
+            MEDS.put(med, Registry.register(BuiltInRegistries.ITEM, GoblinCraft.id(med.id),
+                    new MedItem(med, new Item.Properties().stacksTo(med.stack))));
+        }
+    }
+
     public static final MenuType<SecureMenu> SECURE_MENU = Registry.register(BuiltInRegistries.MENU, GoblinCraft.id("secure"),
             new ExtendedScreenHandlerType<>(SecureMenu::new, ByteBufCodecs.VAR_INT));
 

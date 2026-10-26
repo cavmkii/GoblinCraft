@@ -16,6 +16,11 @@ import org.lwjgl.glfw.GLFW;
 public final class ClientTarkov {
     public static TarkovNet.RaidState raid = new TarkovNet.RaidState(0, 0, 0, -1);
 
+    public static TarkovNet.BodySync body = new TarkovNet.BodySync(new float[] {1, 1, 1, 1, 1, 1, 1}, new int[7], 0);
+
+    public static final KeyMapping OPEN_STATUS = new KeyMapping("key.goblincraft.status", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_H,
+            "key.categories.goblincraft");
+
     public static final KeyMapping OPEN_SECURE = new KeyMapping("key.goblincraft.secure", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_J,
             "key.categories.goblincraft");
 
@@ -23,6 +28,8 @@ public final class ClientTarkov {
 
     public static void init() {
         KeyBindingHelper.registerKeyBinding(OPEN_SECURE);
+        KeyBindingHelper.registerKeyBinding(OPEN_STATUS);
+        ClientPlayNetworking.registerGlobalReceiver(TarkovNet.BodySync.TYPE, (payload, ctx) -> body = payload);
         MenuScreens.register(TarkovContent.SECURE_MENU, SecureScreen::new);
         ClientPlayNetworking.registerGlobalReceiver(TarkovNet.RaidState.TYPE, (payload, ctx) -> raid = payload);
         ClientPlayNetworking.registerGlobalReceiver(TarkovNet.HideoutView.TYPE, (payload, ctx) -> {
@@ -34,6 +41,11 @@ public final class ClientTarkov {
             }
         });
         ClientTickEvents.END_CLIENT_TICK.register(mc -> {
+            while (OPEN_STATUS.consumeClick()) {
+                if (mc.player != null && mc.screen == null) {
+                    mc.setScreen(new StatusScreen());
+                }
+            }
             while (OPEN_SECURE.consumeClick()) {
                 if (mc.player != null && mc.screen == null) {
                     ClientPlayNetworking.send(new TarkovNet.OpenSecure());

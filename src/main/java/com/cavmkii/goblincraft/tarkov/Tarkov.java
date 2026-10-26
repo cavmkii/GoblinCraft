@@ -82,6 +82,7 @@ public final class Tarkov {
     public static void init() {
         TarkovContent.init();
         TarkovNet.register();
+        Health.init();
 
         ServerTickEvents.END_SERVER_TICK.register(Tarkov::tick);
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
@@ -544,6 +545,9 @@ public final class Tarkov {
     }
 
     private static String describe(ItemStack stack) {
+        if (stack.getItem() instanceof MedItem med) {
+            return med.med.describe();
+        }
         if (stack.getItem() instanceof SecureItem secure) {
             return "Secure container, " + secure.tier.width + "x" + secure.tier.height + ". Use it to install.";
         }

@@ -124,7 +124,38 @@ public final class TarkovNet {
         @Override public Type<OpenSecure> type() { return TYPE; }
     }
 
+    /** Server to client: body-part health, conditions and painkiller time. */
+    public record BodySync(float[] body, int[] conditions, int painkillerTicks) implements CustomPacketPayload {
+        public static final Type<BodySync> TYPE = payloadType("body_sync");
+        public static final StreamCodec<FriendlyByteBuf, BodySync> CODEC = StreamCodec.of((buf, p) -> {
+            for (int i = 0; i < 7; i++) {
+                buf.writeFloat(p.body[i]);
+                buf.writeVarInt(p.conditions[i]);
+            }
+            buf.writeVarInt(p.painkillerTicks);
+        }, buf -> {
+            float[] body = new float[7];
+            int[] conditions = new int[7];
+            for (int i = 0; i < 7; i++) {
+                body[i] = buf.readFloat();
+                conditions[i] = buf.readVarInt();
+            }
+            return new BodySync(body, conditions, buf.readVarInt());
+        });
+        @Override public Type<BodySync> type() { return TYPE; }
+    }
+
+    /** Client to server: use the med in an inventory slot on a body part. */
+    public record TreatPart(int slot, int part) implements CustomPacketPayload {
+        public static final Type<TreatPart> TYPE = payloadType("treat_part");
+        public static final StreamCodec<FriendlyByteBuf, TreatPart> CODEC =
+                StreamCodec.of((buf, p) -> { buf.writeVarInt(p.slot); buf.writeVarInt(p.part); }, buf -> new TreatPart(buf.readVarInt(), buf.readVarInt()));
+        @Override public Type<TreatPart> type() { return TYPE; }
+    }
+
     static void register() {
+        PayloadTypeRegistry.playS2C().register(BodySync.TYPE, BodySync.CODEC);
+        PayloadTypeRegistry.playC2S().register(TreatPart.TYPE, TreatPart.CODEC);
         PayloadTypeRegistry.playS2C().register(RaidState.TYPE, RaidState.CODEC);
         PayloadTypeRegistry.playS2C().register(HideoutView.TYPE, HideoutView.CODEC);
         PayloadTypeRegistry.playC2S().register(HideoutAction.TYPE, HideoutAction.CODEC);

@@ -40,7 +40,7 @@ public final class GoblinCraftClient implements ClientModInitializer {
         ItemTooltipCallback.EVENT.register((stack, context, type, lines) -> {
             if (ModItems.DESCRIBED.contains(stack.getItem()) || stack.is(RpgContent.ORB_OF_REGRET) || stack.is(RpgContent.ALTAR_ITEM)
                     || BuiltInRegistries.ITEM.getKey(stack.getItem()).getNamespace().equals("goblincraft")
-                    && BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath().matches("secure_.*|hideout_bench")) {
+                    && net.minecraft.client.resources.language.I18n.exists("item.goblincraft." + BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath() + ".desc")) {
                 String key = "item.goblincraft." + BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath() + ".desc";
                 lines.add(1, Component.translatable(key).withStyle(ChatFormatting.GRAY));
             }

@@ -17,6 +17,9 @@ public record HideoutRecipe(String id, Supplier<ItemStack> result, List<Cost> co
                 List.of(Cost.of(Items.IRON_INGOT, 16), Cost.of(Items.GOLD_INGOT, 10)), Module.WORKSHOP, 2));
         ALL.add(new HideoutRecipe("secure_kappa", () -> new ItemStack(TarkovContent.SECURE_KAPPA),
                 List.of(Cost.of(Items.DIAMOND, 8), Cost.of(Items.GOLD_INGOT, 20)), Module.WORKSHOP, 3));
+        for (Med med : Med.values()) {
+            ALL.add(new HideoutRecipe(med.id, () -> new ItemStack(TarkovContent.MEDS.get(med)), med.costs, med.gate, med.gateLevel));
+        }
     }
 
     public static HideoutRecipe byId(String id) {

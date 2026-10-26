@@ -43,5 +43,20 @@
   "item.goblincraft.secure_gamma.desc": "3x3. Use it to upgrade your secure container. What's inside survives death in raid.",
   "item.goblincraft.secure_kappa": "Secure Container Kappa",
   "item.goblincraft.secure_kappa.desc": "4x3. Use it to upgrade your secure container. What's inside survives death in raid.",
-  "key.goblincraft.secure": "Open secure container"
+  "key.goblincraft.secure": "Open secure container",
+  "item.goblincraft.bandage": "Bandage",
+  "item.goblincraft.bandage.desc": "Stops a light bleed. Use it, or pick the part on the STATUS screen (H).",
+  "item.goblincraft.tourniquet": "Tourniquet",
+  "item.goblincraft.tourniquet.desc": "Stops any bleed. Arms and legs only. Use it, or pick the part on the STATUS screen (H).",
+  "item.goblincraft.splint": "Splint",
+  "item.goblincraft.splint.desc": "Sets a fractured arm or leg. Use it, or pick the part on the STATUS screen (H).",
+  "item.goblincraft.painkillers": "Painkillers",
+  "item.goblincraft.painkillers.desc": "Hides fracture and destroyed-limb effects for 5 minutes. Use it, or pick the part on the STATUS screen (H).",
+  "item.goblincraft.field_kit": "Field Kit",
+  "item.goblincraft.field_kit.desc": "Stops a part's bleeds and heals it 30% of max health. Use it, or pick the part on the STATUS screen (H).",
+  "item.goblincraft.surgical_kit": "Surgical Kit",
+  "item.goblincraft.surgical_kit.desc": "Restores a destroyed part, stops its bleeding, sets it and heals it. Use it, or pick the part on the STATUS screen (H).",
+  "death.attack.goblincraft.bleed": "%1$s bled out",
+  "death.attack.goblincraft.bleed.player": "%1$s bled out",
+  "key.goblincraft.status": "Open STATUS (body)"
 }
