@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.cavmkii.seancraft.mixin.client",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "ContainerScreenMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

@@ -1,20 +1,23 @@
 {
   "schemaVersion": 1,
-  "id": "goblincraft",
+  "id": "seancraft",
   "version": "${version}",
-  "name": "GoblinCraft",
-  "description": "Joe the goblin, Sean the travelling merchant, and the Baby Wars. A port of ValheimGoblinPack.",
+  "name": "SeanCraft",
+  "description": "Joe the goblin, Sean the travelling merchant and the Baby Wars, plus a PoE-style passive web, Valheim skills, and TarkoValheim raids, hideouts, body health, modular gear and a Tetris inventory.",
   "authors": ["cavmkii"],
   "contact": {
-    "sources": "https://github.com/cavmkii/GoblinCraft"
+    "sources": "https://github.com/cavmkii/SeanCraft"
   },
   "license": "All-Rights-Reserved",
   "environment": "*",
   "entrypoints": {
-    "main": ["com.cavmkii.goblincraft.GoblinCraft"],
-    "client": ["com.cavmkii.goblincraft.client.GoblinCraftClient"]
+    "main": ["com.cavmkii.seancraft.SeanCraft"],
+    "client": ["com.cavmkii.seancraft.client.SeanCraftClient"]
   },
-  "mixins": ["goblincraft.mixins.json"],
+  "mixins": [
+    "seancraft.mixins.json",
+    {"config": "seancraft.client.mixins.json", "environment": "client"}
+  ],
   "depends": {
     "fabricloader": ">=0.16.0",
     "minecraft": "~1.21.1",
