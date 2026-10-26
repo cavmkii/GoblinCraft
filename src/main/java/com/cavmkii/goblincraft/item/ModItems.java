@@ -65,6 +65,10 @@ public final class ModItems {
                         DESCRIBED.forEach(output::accept);
                         output.accept(com.cavmkii.goblincraft.rpg.RpgContent.ALTAR_ITEM);
                         output.accept(com.cavmkii.goblincraft.rpg.RpgContent.ORB_OF_REGRET);
+                        output.accept(com.cavmkii.goblincraft.tarkov.TarkovContent.HIDEOUT_BENCH_ITEM);
+                        output.accept(com.cavmkii.goblincraft.tarkov.TarkovContent.SECURE_BETA);
+                        output.accept(com.cavmkii.goblincraft.tarkov.TarkovContent.SECURE_GAMMA);
+                        output.accept(com.cavmkii.goblincraft.tarkov.TarkovContent.SECURE_KAPPA);
                     })
                     .build());
 

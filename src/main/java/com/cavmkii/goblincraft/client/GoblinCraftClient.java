@@ -2,6 +2,7 @@ package com.cavmkii.goblincraft.client;
 
 import com.cavmkii.goblincraft.entity.ModEntities;
 import com.cavmkii.goblincraft.client.rpg.ClientRpg;
+import com.cavmkii.goblincraft.client.tarkov.ClientTarkov;
 import com.cavmkii.goblincraft.item.ModItems;
 import com.cavmkii.goblincraft.rpg.RpgContent;
 import net.fabricmc.api.ClientModInitializer;
@@ -30,13 +31,16 @@ public final class GoblinCraftClient implements ClientModInitializer {
         EntityRendererRegistry.register(ModEntities.BABY_BOTTLE, ThrownItemRenderer::new);
         EntityRendererRegistry.register(RpgContent.SKILL_PROJECTILE, ctx -> new ThrownItemRenderer<>(ctx, 1.25f, true));
         ClientRpg.init();
+        ClientTarkov.init();
 
         // Merch and the bonnet are dyed leather; tint the base layer of their icons.
         ColorProviderRegistry.ITEM.register((stack, tintIndex) -> tintIndex > 0 ? -1 : DyedItemColor.getOrDefault(stack, -1),
                 ModItems.MERCH, ModItems.BABY_BONNET);
 
         ItemTooltipCallback.EVENT.register((stack, context, type, lines) -> {
-            if (ModItems.DESCRIBED.contains(stack.getItem()) || stack.is(RpgContent.ORB_OF_REGRET) || stack.is(RpgContent.ALTAR_ITEM)) {
+            if (ModItems.DESCRIBED.contains(stack.getItem()) || stack.is(RpgContent.ORB_OF_REGRET) || stack.is(RpgContent.ALTAR_ITEM)
+                    || BuiltInRegistries.ITEM.getKey(stack.getItem()).getNamespace().equals("goblincraft")
+                    && BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath().matches("secure_.*|hideout_bench")) {
                 String key = "item.goblincraft." + BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath() + ".desc";
                 lines.add(1, Component.translatable(key).withStyle(ChatFormatting.GRAY));
             }

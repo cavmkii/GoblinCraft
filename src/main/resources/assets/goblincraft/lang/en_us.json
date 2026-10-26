@@ -34,5 +34,14 @@
   "key.goblincraft.ability2": "Ability 2",
   "key.goblincraft.ability3": "Ability 3",
   "key.goblincraft.ability4": "Ability 4",
-  "key.goblincraft.ability5": "Ability 5"
+  "key.goblincraft.ability5": "Ability 5",
+  "block.goblincraft.hideout_bench": "Hideout Bench",
+  "item.goblincraft.hideout_bench.desc": "Everything within its radius is your hideout: safe from raid rules. Use it to build modules and craft hideout gear.",
+  "item.goblincraft.secure_beta": "Secure Container Beta",
+  "item.goblincraft.secure_beta.desc": "3x2. Use it to upgrade your secure container. What's inside survives death in raid.",
+  "item.goblincraft.secure_gamma": "Secure Container Gamma",
+  "item.goblincraft.secure_gamma.desc": "3x3. Use it to upgrade your secure container. What's inside survives death in raid.",
+  "item.goblincraft.secure_kappa": "Secure Container Kappa",
+  "item.goblincraft.secure_kappa.desc": "4x3. Use it to upgrade your secure container. What's inside survives death in raid.",
+  "key.goblincraft.secure": "Open secure container"
 }

@@ -85,6 +85,15 @@ public final class Cfg {
     public static double babyHealthScale = 0.35;
     public static double babyDamageScale = 0.5;
 
+    // Raid (TarkoValheim)
+    public enum DeathRule { VANILLA, KEEP_SECURE, LOSE_EVERYTHING }
+    public static DeathRule raidDeathRule = DeathRule.LOSE_EVERYTHING;
+    public static double hideoutRadius = 30;
+    public static boolean raidHostility = true;
+    public static boolean huntingParties = true;
+    public static double calmMinutes = 5;
+    public static double threatStepMinutes = 5;
+
     // Fight
     public static double fightTriggerRange = 35;
     public static double fightSeconds = 45;
@@ -147,6 +156,14 @@ public final class Cfg {
         i("BabyWars", "SecurityCount", "How many of Sean's Security guards show up.", v -> warSecurityCount = v, () -> warSecurityCount);
         d("BabyWars", "BabyHealthScale", "Baby health relative to Joe's scaled health.", v -> babyHealthScale = v, () -> babyHealthScale);
         d("BabyWars", "BabyDamageScale", "Baby damage relative to Joe's scaled damage.", v -> babyDamageScale = v, () -> babyDamageScale);
+
+        s("Raid", "DeathRule", "What happens to your inventory when you die outside a hideout. VANILLA: normal drops. KEEP_SECURE: normal drops, but the secure container stays with you. LOSE_EVERYTHING: no drops; everything outside the secure container is gone.",
+                v -> raidDeathRule = DeathRule.valueOf(v.trim().toUpperCase(Locale.ROOT)), () -> raidDeathRule.name());
+        d("Raid", "HideoutRadius", "Radius (blocks) of a Hideout Bench's safe zone before Perimeter upgrades.", v -> hideoutRadius = v, () -> hideoutRadius);
+        b("Raid", "Hostility", "Threat rises the longer you stay out: elite mobs and hunting parties.", v -> raidHostility = v, () -> raidHostility);
+        b("Raid", "HuntingParties", "Send hunting parties at raiding players as threat rises.", v -> huntingParties = v, () -> huntingParties);
+        d("Raid", "CalmMinutes", "Minutes at the start of a raid before threat starts rising.", v -> calmMinutes = v, () -> calmMinutes);
+        d("Raid", "ThreatStepMinutes", "Minutes between threat levels (max 4).", v -> threatStepMinutes = v, () -> threatStepMinutes);
 
         d("Fight", "TriggerRange", "Joe and Sean start fighting when this close (blocks).", v -> fightTriggerRange = v, () -> fightTriggerRange);
         d("Fight", "DurationSeconds", "Length of a fight.", v -> fightSeconds = v, () -> fightSeconds);
