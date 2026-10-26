@@ -96,7 +96,7 @@ public final class TetrisNet {
         @Override public Type<Sync> type() { return TYPE; }
     }
 
-    /** Server to client: open the Tarkov screen. */
+    /** Server to client: open the Tarkov screen on a tab; -1 opens the vanilla inventory (2x2 crafting). */
     public record Open(int tab) implements CustomPacketPayload {
         public static final Type<Open> TYPE = payloadType("inv_open");
         public static final StreamCodec<RegistryFriendlyByteBuf, Open> CODEC =
@@ -124,7 +124,24 @@ public final class TetrisNet {
         @Override public Type<QuickMove> type() { return TYPE; }
     }
 
-    /** Client to server: buttons. 0 sort, 1 transfer all to stash, 2 drop all unsorted, 3 close container, 4 screen opened, 5 screen closed. */
+    /**
+     * Client to server: a click on the grid panel shown beside vanilla container screens. Swaps with the menu's
+     * cursor item. Button 0 left (whole stack), 1 right (half, or put down one), 2 shift (send into the menu).
+     */
+    public record PanelClick(Loc loc, boolean rotated, int button) implements CustomPacketPayload {
+        public static final Type<PanelClick> TYPE = payloadType("inv_panel");
+        public static final StreamCodec<RegistryFriendlyByteBuf, PanelClick> CODEC = StreamCodec.of((buf, p) -> {
+            p.loc.write(buf);
+            buf.writeBoolean(p.rotated);
+            buf.writeVarInt(p.button);
+        }, buf -> new PanelClick(Loc.read(buf), buf.readBoolean(), buf.readVarInt()));
+        @Override public Type<PanelClick> type() { return TYPE; }
+    }
+
+    /**
+     * Client to server: buttons. 0 sort, 1 transfer all to stash, 2 drop all unsorted, 3 close container,
+     * 4 screen opened, 5 screen closed, 6 open a crafting grid.
+     */
     public record Action(int action) implements CustomPacketPayload {
         public static final Type<Action> TYPE = payloadType("inv_action");
         public static final StreamCodec<RegistryFriendlyByteBuf, Action> CODEC =
@@ -171,5 +188,6 @@ public final class TetrisNet {
         PayloadTypeRegistry.playC2S().register(QuickMove.TYPE, QuickMove.CODEC);
         PayloadTypeRegistry.playC2S().register(Action.TYPE, Action.CODEC);
         PayloadTypeRegistry.playC2S().register(Craft.TYPE, Craft.CODEC);
+        PayloadTypeRegistry.playC2S().register(PanelClick.TYPE, PanelClick.CODEC);
     }
 }

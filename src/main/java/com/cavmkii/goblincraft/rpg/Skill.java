@@ -9,7 +9,7 @@ public enum Skill {
     AXES("Axes", Attr.STR, "+%d%% damage with axes"),
     BLOCKING("Blocking", Attr.STR, "Reflect %d%% of blocked damage"),
     MINING("Mining", Attr.STR, "+%d%% block breaking speed"),
-    BOWS("Bows", Attr.AGI, "+%d%% arrow damage"),
+    BOWS("Bows & Crossbows", Attr.AGI, "+%d%% arrow damage"),
     RUNNING("Running", Attr.AGI, "+%d%% sprint speed"),
     SNEAKING("Sneaking", Attr.AGI, "+%d%% sneaking speed"),
     SWIMMING("Swimming", Attr.AGI, "+%d%% swim speed, longer breath"),

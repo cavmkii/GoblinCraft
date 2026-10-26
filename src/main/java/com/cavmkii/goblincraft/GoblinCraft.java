@@ -40,6 +40,7 @@ public final class GoblinCraft implements ModInitializer {
         com.cavmkii.goblincraft.parts.PartItems.init();
         com.cavmkii.goblincraft.tetris.Tetris.init();
         Tarkov.init();
+        com.cavmkii.goblincraft.compat.GrappleCompat.init();
 
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
             SnowQuip.reset();

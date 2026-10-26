@@ -14,7 +14,10 @@
     "main": ["com.cavmkii.goblincraft.GoblinCraft"],
     "client": ["com.cavmkii.goblincraft.client.GoblinCraftClient"]
   },
-  "mixins": ["goblincraft.mixins.json"],
+  "mixins": [
+    "goblincraft.mixins.json",
+    {"config": "goblincraft.client.mixins.json", "environment": "client"}
+  ],
   "depends": {
     "fabricloader": ">=0.16.0",
     "minecraft": "~1.21.1",

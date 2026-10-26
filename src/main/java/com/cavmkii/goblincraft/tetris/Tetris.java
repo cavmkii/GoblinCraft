@@ -158,6 +158,10 @@ public final class Tetris {
             action(ctx.player(), p.action());
             sync(ctx.player());
         });
+        ServerPlayNetworking.registerGlobalReceiver(TetrisNet.PanelClick.TYPE, (p, ctx) -> {
+            panelClick(ctx.player(), p.loc(), p.rotated(), p.button());
+            sync(ctx.player());
+        });
         ServerPlayNetworking.registerGlobalReceiver(TetrisNet.Craft.TYPE, (p, ctx) -> {
             if (!p.id().isEmpty()) {
                 craft(ctx.player(), p.id(), p.times());
@@ -340,7 +344,8 @@ public final class Tetris {
         Item item = stack.getItem();
         return item instanceof SwordItem || item instanceof net.minecraft.world.item.DiggerItem || item instanceof AxeItem
                 || item instanceof MaceItem || item instanceof TridentItem || item instanceof BowItem || item instanceof CrossbowItem
-                || item instanceof ShieldItem || item instanceof FishingRodItem;
+                || item instanceof ShieldItem || item instanceof FishingRodItem
+                || com.cavmkii.goblincraft.compat.GrappleCompat.isGrappleItem(item);
     }
 
     /**
@@ -870,9 +875,86 @@ public final class Tetris {
                 }
                 rt.container = null;
             }
+            case 6 -> openCraftingGrid(player);
             default -> { }
         }
         rt.dirty = true;
+    }
+
+    /**
+     * A real crafting grid: 3x3 near a crafting table or in the hideout, else the vanilla 2x2 inventory screen.
+     * Either way the grid panel shows beside it.
+     */
+    private static void openCraftingGrid(ServerPlayer player) {
+        if (!nearTable(player)) {
+            ServerPlayNetworking.send(player, new TetrisNet.Open(-1));
+            return;
+        }
+        player.openMenu(new net.minecraft.world.SimpleMenuProvider((id, inventory, p) ->
+                new net.minecraft.world.inventory.CraftingMenu(id, inventory,
+                        net.minecraft.world.inventory.ContainerLevelAccess.create(player.level(), player.blockPosition())) {
+                    @Override
+                    public boolean stillValid(Player who) {
+                        return who.isAlive();
+                    }
+                }, Component.translatable("container.crafting")));
+    }
+
+    // ================================================================== grid panel beside vanilla screens
+
+    /**
+     * The panel works through the open menu's cursor, so the vanilla screen does the rest: click a grid item to
+     * pick it up, click a grid cell while holding something to put it there.
+     */
+    static void panelClick(ServerPlayer player, Loc loc, boolean rotated, int button) {
+        if (!player.isAlive() || !active(player) || loc.kind() != Loc.GRID) {
+            return;
+        }
+        var menu = player.containerMenu;
+        InvData data = data(player);
+        ItemStack carried = menu.getCarried();
+        if (carried.isEmpty()) {
+            Ref src = ref(player, data, loc);
+            if (src == null || src.get().isEmpty()) {
+                return;
+            }
+            ItemStack stack = src.get();
+            if (button == 2) {
+                // Shift: straight into the menu's own slots (furnace input, chest, crafting grid...).
+                for (var slot : menu.slots) {
+                    if (stack.isEmpty()) {
+                        break;
+                    }
+                    if (slot.container instanceof Inventory || !slot.mayPlace(stack)) {
+                        continue;
+                    }
+                    ItemStack in = slot.getItem();
+                    int limit = slot.getMaxStackSize(stack);
+                    if (in.isEmpty()) {
+                        slot.setByPlayer(stack.split(Math.min(limit, stack.getCount())));
+                    } else if (ItemStack.isSameItemSameComponents(in, stack) && in.getCount() < limit) {
+                        int n = Math.min(stack.getCount(), limit - in.getCount());
+                        in.grow(n);
+                        stack.shrink(n);
+                        slot.setChanged();
+                    }
+                }
+                src.set(stack.isEmpty() ? ItemStack.EMPTY : stack);
+            } else {
+                int n = button == 1 ? (stack.getCount() + 1) / 2 : stack.getCount();
+                menu.setCarried(stack.split(n));
+                src.set(stack.isEmpty() ? ItemStack.EMPTY : stack);
+            }
+        } else {
+            ItemStack moving = button == 1 ? carried.copyWithCount(1) : carried.copy();
+            int offered = moving.getCount();
+            // insert() empties what it places from the stack it's given, so count from before.
+            int placed = offered - insert(player, data, loc, moving, rotated, null).getCount();
+            carried.shrink(placed);
+            menu.setCarried(carried.isEmpty() ? ItemStack.EMPTY : carried);
+        }
+        menu.broadcastChanges();
+        rt(player).dirty = true;
     }
 
     // ================================================================== death

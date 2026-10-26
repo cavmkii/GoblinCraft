@@ -37,7 +37,9 @@ public final class ClientTetris {
         ClientPlayNetworking.registerGlobalReceiver(TetrisNet.CraftList.TYPE, (payload, ctx) -> crafts = payload.entries());
         ClientPlayNetworking.registerGlobalReceiver(TetrisNet.Open.TYPE, (payload, ctx) -> {
             Minecraft mc = ctx.client();
-            if (mc.screen instanceof TarkovScreen screen) {
+            if (payload.tab() < 0) {
+                mc.setScreen(new net.minecraft.client.gui.screens.inventory.InventoryScreen(mc.player));
+            } else if (mc.screen instanceof TarkovScreen screen) {
                 screen.setTab(payload.tab());
             } else if (mc.screen == null) {
                 mc.setScreen(new TarkovScreen(payload.tab()));

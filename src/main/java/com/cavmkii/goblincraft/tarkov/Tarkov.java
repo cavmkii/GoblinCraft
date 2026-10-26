@@ -159,7 +159,7 @@ public final class Tarkov {
             if (inRaid) {
                 rt.raidStart = now;
                 rt.announcedThreat = 0;
-                title(player, "RAID STARTED", "Die out here and you lose everything outside your secure pouch", ChatFormatting.RED);
+                title(player, "RAID STARTED", "Only your secure pouch is safe", ChatFormatting.RED);
             } else if (rt.inRaid != null) {
                 title(player, "EXTRACTED", "Raid time " + clock(now - rt.raidStart), ChatFormatting.GREEN);
             }

@@ -47,6 +47,7 @@ public class TarkovScreen extends Screen {
     private static final int COL4 = 264;
     private static final int COL4_W = 9 * C;
     private static final int ROW = 22;
+    private static final int GRID_BTN_X = W - 86;
 
     private int tab;
     private float scale = 1;
@@ -87,6 +88,7 @@ public class TarkovScreen extends Screen {
         status.init(minecraft, width, height - TOP);
         if (!announced) {
             announced = true;
+            minecraft.getTutorial().onOpenInventory();
             ClientPlayNetworking.send(new TetrisNet.Action(4));
             if (tab == CRAFTING) {
                 ClientPlayNetworking.send(new TetrisNet.Craft("", 0));
@@ -516,16 +518,19 @@ public class TarkovScreen extends Screen {
     }
 
     private ItemStack renderCrafting(GuiGraphics g, int mx, int my) {
-        g.fill(0, 0, 200, 14, searchFocused ? 0xFF55555F : 0xFF33333C);
-        g.fill(1, 1, 199, 13, 0xFF101014);
+        g.fill(0, 0, 140, 14, searchFocused ? 0xFF55555F : 0xFF33333C);
+        g.fill(1, 1, 139, 13, 0xFF101014);
         String shown = search.isEmpty() && !searchFocused ? "Search..." : search + (searchFocused && ticks / 6 % 2 == 0 ? "_" : "");
         g.drawString(font, shown, 4, 3, search.isEmpty() && !searchFocused ? 0xFF666670 : 0xFFFFFFFF, false);
         g.pose().pushPose();
-        g.pose().translate(206, 3, 0);
+        g.pose().translate(146, 3, 0);
         g.pose().scale(0.75f, 0.75f, 1);
-        g.drawString(font, "3x3 needs a crafting table within 6 blocks, or the hideout.", 0, 0, 0xFF888890, false);
-        g.drawString(font, "Draws from hotbar and grids" + (ClientTetris.sync.stash() ? ", and the stash." : "."), 0, 9, 0xFF888890, false);
+        g.drawString(font, "3x3: crafting table within 6 blocks, or hideout.", 0, 0, 0xFF888890, false);
+        g.drawString(font, "Uses hotbar and grids" + (ClientTetris.sync.stash() ? ", and the stash." : "."), 0, 9, 0xFF888890, false);
         g.pose().popPose();
+        boolean gridHover = mx >= GRID_BTN_X && mx < W && my >= 0 && my < 14;
+        g.fill(GRID_BTN_X, 0, W, 14, gridHover ? 0xFF4C4C58 : 0xFF33333C);
+        g.drawString(font, "CRAFTING GRID", GRID_BTN_X + (W - GRID_BTN_X - font.width("CRAFTING GRID")) / 2, 3, 0xFFDDDDDD, false);
 
         List<TetrisNet.CraftEntry> list = filtered();
         int top = 20;
@@ -677,7 +682,11 @@ public class TarkovScreen extends Screen {
     }
 
     private boolean clickCrafting(double x, double y) {
-        searchFocused = x >= 0 && x < 200 && y >= 0 && y < 14;
+        searchFocused = x >= 0 && x < 140 && y >= 0 && y < 14;
+        if (x >= GRID_BTN_X && x < W && y >= 0 && y < 14) {
+            ClientPlayNetworking.send(new TetrisNet.Action(6));
+            return true;
+        }
         List<TetrisNet.CraftEntry> list = filtered();
         int top = 20;
         if (y < top) {
