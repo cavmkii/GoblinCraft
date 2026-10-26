@@ -77,9 +77,7 @@ public final class ClientRpg {
             return;
         }
         while (OPEN_WEB.consumeClick()) {
-            if (mc.screen == null) {
-                mc.setScreen(new WebScreen());
-            }
+            com.cavmkii.seancraft.client.tarkov.ClientTetris.open(com.cavmkii.seancraft.client.tarkov.TarkovScreen.WEB);
         }
         for (int i = 0; i < ABILITY_KEYS.length; i++) {
             while (ABILITY_KEYS[i].consumeClick()) {

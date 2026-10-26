@@ -38,7 +38,8 @@ public class TarkovScreen extends Screen {
     public static final int CRAFTING = 1;
     public static final int SKILLS = 2;
     public static final int STATUS = 3;
-    private static final String[] TABS = {"GEAR", "CRAFTING", "SKILLS", "STATUS"};
+    public static final int WEB = 4;
+    private static final String[] TABS = {"GEAR", "CRAFTING", "SKILLS", "STATUS", "WEB"};
 
     private static final int C = 18;
     private static final int W = 426;
@@ -66,6 +67,7 @@ public class TarkovScreen extends Screen {
     private boolean searchFocused;
     private int ticks;
     private StatusScreen status;
+    private com.cavmkii.seancraft.client.rpg.WebScreen web;
 
     public TarkovScreen(int tab) {
         super(Component.literal("Inventory"));
@@ -86,6 +88,10 @@ public class TarkovScreen extends Screen {
         oy = TOP + Math.max(0, (height - TOP - H * scale) / 2f - 4);
         status = new StatusScreen();
         status.init(minecraft, width, height - TOP);
+        if (web == null) {
+            web = new com.cavmkii.seancraft.client.rpg.WebScreen();
+        }
+        web.init(minecraft, width, height - TOP);
         if (!announced) {
             announced = true;
             minecraft.getTutorial().onOpenInventory();
@@ -151,10 +157,10 @@ public class TarkovScreen extends Screen {
     /** x, y, size of an equipment place. */
     private static int[] equipRect(int slot) {
         return switch (slot) {
-            case 4 -> new int[] {22, 22, 36};
-            case 5 -> new int[] {22, 72, 36};
-            case 6 -> new int[] {0, 92, C};
-            default -> new int[] {0, 12 + slot * 20, C};
+            case 4 -> new int[] {25, 12, 36};
+            case 5 -> new int[] {25, 62, 36};
+            case 6 -> new int[] {0, 108, 22};
+            default -> new int[] {0, 12 + slot * 24, 22};
         };
     }
 
@@ -167,22 +173,47 @@ public class TarkovScreen extends Screen {
     private static final int DISCARD_Y = 198;
 
     /** Rows on the right: unsorted first, then each container. y is before scrolling. */
-    private record Section(int kind, int index, String title, List<ItemStack> stacks, int y) {}
+    private record Section(int kind, int index, String title, int y, int height) {}
 
     private List<Section> sections() {
         TetrisNet.Sync s = ClientTetris.sync;
         List<Section> out = new ArrayList<>();
         int y = 0;
         if (!s.unsorted().isEmpty()) {
-            out.add(new Section(Loc.UNSORTED, 0, "UNSORTED (no room)", s.unsorted(), y));
-            y += 10 + rows(s.unsorted().size()) * C + 6;
+            int h = 10 + rows(s.unsorted().size()) * C;
+            out.add(new Section(Loc.UNSORTED, 0, "UNSORTED (no room)", y, h));
+            y += h + 6;
         }
         for (int i = 0; i < s.containers().size(); i++) {
             TetrisNet.ContainerView c = s.containers().get(i);
-            out.add(new Section(Loc.CONTAINER, i, c.name().toUpperCase(Locale.ROOT), c.stacks(), y));
-            y += 10 + rows(c.stacks().size()) * C + 6;
+            int h = 10 + c.height() * C + (c.overflow().isEmpty() ? 0 : 10 + rows(c.overflow().size()) * C);
+            out.add(new Section(Loc.CONTAINER, i, c.name().toUpperCase(Locale.ROOT), y, h));
+            y += h + 6;
         }
         return out;
+    }
+
+    /** A grid on screen: top-left, size in cells, and its items. */
+    private record GridRef(int x, int y, int w, int h, List<Placed> items) {}
+
+    /** The grid a GRID or container-cell location belongs to. */
+    private GridRef gridFor(Loc loc) {
+        if (loc == null) {
+            return null;
+        }
+        if (loc.kind() == Loc.GRID) {
+            Box b = box(GridId.values()[loc.a()]);
+            return b == null ? null : new GridRef(b.x, b.y, b.w, b.h, b.items);
+        }
+        if (loc.kind() == Loc.CONTAINER && loc.b() >= 0 && loc.a() < ClientTetris.sync.containers().size()) {
+            TetrisNet.ContainerView c = ClientTetris.sync.containers().get(loc.a());
+            for (Section sec : sections()) {
+                if (sec.kind == Loc.CONTAINER && sec.index == loc.a()) {
+                    return new GridRef(COL4, sec.y - (int) containerScroll + 10, c.width(), c.height(), c.items());
+                }
+            }
+        }
+        return null;
     }
 
     private static int rows(int n) {
@@ -194,7 +225,7 @@ public class TarkovScreen extends Screen {
             return 0;
         }
         Section last = list.get(list.size() - 1);
-        return last.y + 10 + rows(last.stacks.size()) * C;
+        return last.y + last.height;
     }
 
     /** What's under a point (virtual coords) on the GEAR tab. For grids it's the cell. */
@@ -219,11 +250,26 @@ public class TarkovScreen extends Screen {
         if (x >= COL4 && x < COL4 + COL4_W && y >= 0 && y < H) {
             for (Section sec : sections()) {
                 int top = sec.y - (int) containerScroll + 10;
-                int n = sec.stacks.size();
-                if (y >= top && y < top + rows(n) * C) {
-                    int i = (int) ((y - top) / C) * 9 + (int) ((x - COL4) / C);
-                    if (i >= 0 && i < n) {
-                        return sec.kind == Loc.UNSORTED ? Loc.unsorted(i) : Loc.container(sec.index, i);
+                int col = (int) ((x - COL4) / C);
+                if (sec.kind == Loc.UNSORTED) {
+                    int n = ClientTetris.sync.unsorted().size();
+                    if (y >= top && y < top + rows(n) * C) {
+                        int i = (int) ((y - top) / C) * 9 + col;
+                        if (i >= 0 && i < n) {
+                            return Loc.unsorted(i);
+                        }
+                    }
+                    continue;
+                }
+                TetrisNet.ContainerView c = ClientTetris.sync.containers().get(sec.index);
+                if (y >= top && y < top + c.height() * C && col < c.width()) {
+                    return Loc.container(sec.index, col, (int) ((y - top) / C));
+                }
+                int otop = top + c.height() * C + 10;
+                if (!c.overflow().isEmpty() && y >= otop && y < otop + rows(c.overflow().size()) * C) {
+                    int i = (int) ((y - otop) / C) * 9 + col;
+                    if (i >= 0 && i < c.overflow().size()) {
+                        return Loc.containerOverflow(sec.index, c.overflowSlots().get(i));
                     }
                 }
             }
@@ -241,14 +287,8 @@ public class TarkovScreen extends Screen {
     }
 
     private Placed placedAt(Loc loc) {
-        if (loc == null || loc.kind() != Loc.GRID) {
-            return null;
-        }
-        Box b = box(GridId.values()[loc.a()]);
-        if (b == null) {
-            return null;
-        }
-        return new Grid(b.w, b.h, b.items).at(loc.b(), loc.c());
+        GridRef r = gridFor(loc);
+        return r == null ? null : new Grid(r.w, r.h, r.items).at(loc.b(), loc.c());
     }
 
     private ItemStack stackAt(Loc loc) {
@@ -269,8 +309,18 @@ public class TarkovScreen extends Screen {
                 Placed p = placedAt(loc);
                 yield p == null ? ItemStack.EMPTY : p.stack;
             }
-            case Loc.CONTAINER -> loc.a() < s.containers().size() && loc.b() < s.containers().get(loc.a()).stacks().size()
-                    ? s.containers().get(loc.a()).stacks().get(loc.b()) : ItemStack.EMPTY;
+            case Loc.CONTAINER -> {
+                if (loc.b() >= 0) {
+                    Placed p = placedAt(loc);
+                    yield p == null ? ItemStack.EMPTY : p.stack;
+                }
+                if (loc.a() >= s.containers().size()) {
+                    yield ItemStack.EMPTY;
+                }
+                TetrisNet.ContainerView c = s.containers().get(loc.a());
+                int i = c.overflowSlots().indexOf(loc.c());
+                yield i < 0 ? ItemStack.EMPTY : c.overflow().get(i);
+            }
             case Loc.UNSORTED -> loc.a() < s.unsorted().size() ? s.unsorted().get(loc.a()) : ItemStack.EMPTY;
             default -> ItemStack.EMPTY;
         };
@@ -281,10 +331,10 @@ public class TarkovScreen extends Screen {
     @Override
     public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
         g.fill(0, 0, width, height, 0xF4101014);
-        if (tab == STATUS) {
+        if (tab == STATUS || tab == WEB) {
             g.pose().pushPose();
             g.pose().translate(0, TOP, 0);
-            status.render(g, mouseX, mouseY - TOP, partialTick);
+            (tab == STATUS ? status : web).render(g, mouseX, mouseY - TOP, partialTick);
             g.pose().popPose();
         } else {
             g.pose().pushPose();
@@ -309,7 +359,7 @@ public class TarkovScreen extends Screen {
     }
 
     private int tabX(int t) {
-        return width / 2 - 2 * 74 + t * 74;
+        return width / 2 - TABS.length * 74 / 2 + t * 74;
     }
 
     private void renderTabs(GuiGraphics g, int mouseX, int mouseY) {
@@ -330,15 +380,16 @@ public class TarkovScreen extends Screen {
         g.fill(x, y, x + size - 1, y + size - 1, hover ? 0xFF4A4A56 : 0xFF2A2A30);
         g.fill(x + 1, y + 1, x + size - 2, y + size - 2, 0xFF1A1A1F);
         if (!stack.isEmpty() && !(heldFrom != null && stack == stackAt(heldFrom) && heldCount == 0)) {
-            if (size > C) {
+            if (size >= 32) {
                 g.pose().pushPose();
                 g.pose().translate(x + size / 2f, y + size / 2f, 0);
                 g.pose().scale(2, 2, 1);
                 g.renderItem(stack, -8, -8);
                 g.pose().popPose();
             } else {
-                g.renderItem(stack, x + 1, y + 1);
-                g.renderItemDecorations(font, stack, x + 1, y + 1);
+                int o = (size - 16) / 2;
+                g.renderItem(stack, x + o, y + o);
+                g.renderItemDecorations(font, stack, x + o, y + o);
             }
         } else if (stack.isEmpty() && empty != null) {
             g.pose().pushPose();
@@ -362,6 +413,11 @@ public class TarkovScreen extends Screen {
         for (int slot = 0; slot < 7; slot++) {
             int[] r = equipRect(slot);
             slot(g, r[0], r[1], r[2], stackAt(Loc.equip(slot)), hover != null && hover.equals(Loc.equip(slot)), EQUIP_NAMES[slot]);
+            if (!held.isEmpty() && equipAccepts(slot, held)) {
+                // Where the held item can be worn.
+                int c = hover != null && hover.equals(Loc.equip(slot)) ? 0xFF7CFC7C : 0xFF3F8F3F;
+                g.renderOutline(r[0] - 1, r[1] - 1, r[2] + 1, r[2] + 1, c);
+            }
         }
         label(g, "HOTBAR", 0, 180);
         for (int i = 0; i < 9; i++) {
@@ -402,6 +458,10 @@ public class TarkovScreen extends Screen {
     }
 
     private void renderGrid(GuiGraphics g, Box b) {
+        renderGrid(g, new GridRef(b.x, b.y, b.w, b.h, b.items));
+    }
+
+    private void renderGrid(GuiGraphics g, GridRef b) {
         g.fill(b.x - 1, b.y - 1, b.x + b.w * C, b.y + b.h * C, 0xFF000000);
         for (int cy = 0; cy < b.h; cy++) {
             for (int cx = 0; cx < b.w; cx++) {
@@ -463,9 +523,23 @@ public class TarkovScreen extends Screen {
         for (Section sec : secs) {
             int y = sec.y - (int) containerScroll;
             g.drawString(font, sec.title, COL4, y, sec.kind == Loc.UNSORTED ? 0xFFFF7755 : 0xFFE0C060, false);
-            for (int i = 0; i < sec.stacks.size(); i++) {
-                Loc loc = sec.kind == Loc.UNSORTED ? Loc.unsorted(i) : Loc.container(sec.index, i);
-                slot(g, COL4 + (i % 9) * C, y + 10 + (i / 9) * C, C, sec.stacks.get(i), hover != null && hover.equals(loc), null);
+            if (sec.kind == Loc.UNSORTED) {
+                List<ItemStack> list = ClientTetris.sync.unsorted();
+                for (int i = 0; i < list.size(); i++) {
+                    Loc loc = Loc.unsorted(i);
+                    slot(g, COL4 + (i % 9) * C, y + 10 + (i / 9) * C, C, list.get(i), hover != null && hover.equals(loc), null);
+                }
+                continue;
+            }
+            TetrisNet.ContainerView c = ClientTetris.sync.containers().get(sec.index);
+            renderGrid(g, new GridRef(COL4, y + 10, c.width(), c.height(), c.items()));
+            if (!c.overflow().isEmpty()) {
+                int oy0 = y + 10 + c.height() * C;
+                g.drawString(font, "NO ROOM IN GRID", COL4, oy0 + 1, 0xFFFF7755, false);
+                for (int i = 0; i < c.overflow().size(); i++) {
+                    Loc loc = Loc.containerOverflow(sec.index, c.overflowSlots().get(i));
+                    slot(g, COL4 + (i % 9) * C, oy0 + 10 + (i / 9) * C, C, c.overflow().get(i), hover != null && hover.equals(loc), null);
+                }
             }
         }
         g.disableScissor();
@@ -476,15 +550,36 @@ public class TarkovScreen extends Screen {
         }
     }
 
+    private boolean equipAccepts(int slot, ItemStack stack) {
+        return switch (slot) {
+            case 0, 1, 2, 3 -> minecraft.player.getEquipmentSlotForItem(stack) == new net.minecraft.world.entity.EquipmentSlot[] {
+                    net.minecraft.world.entity.EquipmentSlot.HEAD, net.minecraft.world.entity.EquipmentSlot.CHEST,
+                    net.minecraft.world.entity.EquipmentSlot.LEGS, net.minecraft.world.entity.EquipmentSlot.FEET}[slot];
+            case 4 -> stack.getItem() instanceof GearItem g && g.spec.kind == com.cavmkii.seancraft.tetris.GearSpec.Kind.RIG;
+            case 5 -> stack.getItem() instanceof GearItem g && g.spec.kind == com.cavmkii.seancraft.tetris.GearSpec.Kind.BACKPACK;
+            default -> false;
+        };
+    }
+
     private void renderHeld(GuiGraphics g, int mx, int my, Loc hover) {
         if (held.isEmpty()) {
+            return;
+        }
+        ItemStack shown = heldCount > 0 ? held.copyWithCount(heldCount) : held;
+        if (gridFor(hover) == null) {
+            // Off the grids, carry a plain icon so it doesn't hide the slot underneath.
+            g.pose().pushPose();
+            g.pose().translate(0, 0, 300);
+            g.renderItem(shown, mx - 8, my - 8);
+            g.renderItemDecorations(font, shown, mx - 8, my - 8);
+            g.pose().popPose();
             return;
         }
         int[] size = ItemSize.of(held);
         int w = heldRot ? size[1] : size[0];
         int h = heldRot ? size[0] : size[1];
-        if (hover != null && hover.kind() == Loc.GRID) {
-            Box b = box(GridId.values()[hover.a()]);
+        if (gridFor(hover) != null) {
+            GridRef b = gridFor(hover);
             if (b != null) {
                 Placed self = heldCount == 0 ? placedAt(heldFrom) : null;
                 Placed there = new Grid(b.w, b.h, b.items).at(hover.b(), hover.c());
@@ -500,7 +595,7 @@ public class TarkovScreen extends Screen {
         }
         g.pose().pushPose();
         g.pose().translate(0, 0, 300);
-        drawPlaced(g, heldCount > 0 ? held.copyWithCount(heldCount) : held, mx - 9, my - 9, w, h, heldRot && size[0] != size[1], 0x8039404C);
+        drawPlaced(g, shown, mx - 9, my - 9, w, h, heldRot && size[0] != size[1], 0x8039404C);
         g.pose().popPose();
     }
 
@@ -631,6 +726,9 @@ public class TarkovScreen extends Screen {
         if (tab == STATUS) {
             return status.mouseClicked(mouseX, mouseY - TOP, button);
         }
+        if (tab == WEB) {
+            return web.mouseClicked(mouseX, mouseY - TOP, button);
+        }
         double x = vx(mouseX);
         double y = vy(mouseY);
         if (tab == CRAFTING) {
@@ -669,7 +767,7 @@ public class TarkovScreen extends Screen {
             return true;
         }
         Placed p = placedAt(loc);
-        heldFrom = p != null ? Loc.grid(GridId.values()[loc.a()], p.x, p.y) : loc;
+        heldFrom = p == null ? loc : loc.kind() == Loc.GRID ? Loc.grid(GridId.values()[loc.a()], p.x, p.y) : Loc.container(loc.a(), p.x, p.y);
         held = stack;
         heldRot = p != null && p.rotated;
         heldCount = hasShiftDown() && stack.getCount() > 1 ? stack.getCount() / 2 : 0;
@@ -709,7 +807,20 @@ public class TarkovScreen extends Screen {
     }
 
     @Override
+    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+        return tab == WEB ? web.mouseDragged(mouseX, mouseY - TOP, button, dragX, dragY) : super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+    }
+
+    @Override
+    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        return tab == WEB ? web.mouseReleased(mouseX, mouseY - TOP, button) : super.mouseReleased(mouseX, mouseY, button);
+    }
+
+    @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (tab == WEB) {
+            return web.mouseScrolled(mouseX, mouseY - TOP, scrollX, scrollY);
+        }
         if (tab == CRAFTING) {
             craftScroll -= scrollY * 20;
         } else if (tab == GEAR && vx(mouseX) >= COL4) {
@@ -753,7 +864,8 @@ public class TarkovScreen extends Screen {
             return true;
         }
         if (minecraft.options.keyInventory.matches(keyCode, scanCode) || ClientTarkov.OPEN_SECURE.matches(keyCode, scanCode)
-                || ClientTarkov.OPEN_STATUS.matches(keyCode, scanCode)) {
+                || ClientTarkov.OPEN_STATUS.matches(keyCode, scanCode)
+                || com.cavmkii.seancraft.client.rpg.ClientRpg.OPEN_WEB.matches(keyCode, scanCode)) {
             onClose();
             return true;
         }

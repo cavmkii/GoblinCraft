@@ -43,6 +43,10 @@ final class RaidHud {
             g.drawString(mc.font, "HIDEOUT", x, y, 0xFF55FF55, true);
             return;
         }
+        if (s.state() == 3) {
+            g.drawString(mc.font, "SPAWN (safe)", x, y, 0xFF55FFFF, true);
+            return;
+        }
         String time = String.format("%02d:%02d", s.raidSeconds() / 60, s.raidSeconds() % 60);
         g.drawString(mc.font, "RAID " + time, x, y, 0xFFFF5555, true);
         StringBuilder threat = new StringBuilder("Threat ");

@@ -22,6 +22,8 @@ public final class TarkovData {
     /** Conditions per body part, as {@link Body} bit flags. */
     public final int[] conditions = new int[7];
     public int painkillerTicks;
+    /** Whether a new player has been placed at a spawn point yet. */
+    public boolean placedAtSpawn;
 
     public static final Codec<TarkovData> CODEC = RecordCodecBuilder.create(i -> i.group(
             Codec.STRING.optionalFieldOf("tier", "ALPHA").forGetter(d -> d.tier.name()),
@@ -42,8 +44,9 @@ public final class TarkovData {
                 }
                 return list;
             }),
-            Codec.INT.optionalFieldOf("painkiller", 0).forGetter(d -> d.painkillerTicks)
-    ).apply(i, (tier, secure, starter, intel, body, conditions, painkiller) -> {
+            Codec.INT.optionalFieldOf("painkiller", 0).forGetter(d -> d.painkillerTicks),
+            Codec.BOOL.optionalFieldOf("placedAtSpawn", false).forGetter(d -> d.placedAtSpawn)
+    ).apply(i, (tier, secure, starter, intel, body, conditions, painkiller, placed) -> {
         TarkovData d = new TarkovData();
         try {
             d.tier = SecureTier.valueOf(tier);
@@ -62,6 +65,7 @@ public final class TarkovData {
             d.conditions[p] = conditions.get(p);
         }
         d.painkillerTicks = painkiller;
+        d.placedAtSpawn = placed;
         return d;
     }));
 }

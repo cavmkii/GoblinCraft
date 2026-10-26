@@ -220,6 +220,18 @@ public final class Health {
         }
     }
 
+    /**
+     * Vanilla healing (food, regeneration, potions) can't fill hearts that belong to destroyed parts. Without this
+     * the reconcile below would still clamp it, but the hearts would flicker up and back down.
+     */
+    public static float capHeal(net.minecraft.world.entity.LivingEntity entity, float amount) {
+        if (!(entity instanceof ServerPlayer player) || player.isCreative() || player.isSpectator()) {
+            return amount;
+        }
+        float cap = player.getMaxHealth() * Body.capFraction(Tarkov.data(player).body);
+        return Math.max(0, Math.min(amount, cap - player.getHealth()));
+    }
+
     /** Keep the parts and the real health bar in step. Destroyed parts cap how high health can go. */
     static void reconcile(ServerPlayer player) {
         TarkovData d = Tarkov.data(player);

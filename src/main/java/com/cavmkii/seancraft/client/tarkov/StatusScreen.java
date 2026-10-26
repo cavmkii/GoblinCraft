@@ -1,6 +1,11 @@
 package com.cavmkii.seancraft.client.tarkov;
 
 import com.cavmkii.seancraft.tarkov.Body;
+import com.cavmkii.seancraft.tarkov.Cures;
+import net.minecraft.world.effect.MobEffectCategory;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffectUtil;
+import net.minecraft.world.effect.MobEffects;
 import com.cavmkii.seancraft.tarkov.BodyPart;
 import com.cavmkii.seancraft.tarkov.MedItem;
 import com.cavmkii.seancraft.tarkov.TarkovNet;
@@ -144,7 +149,36 @@ public class StatusScreen extends Screen {
             mx += 22;
         }
         if (medSlots().isEmpty()) {
-            g.drawString(font, "none - make them at a Hideout Bench with a Medstation", lx, ly + 4, 0xFF777777, false);
+            g.drawString(font, "none (Hideout Bench, Medstation)", lx, ly + 4, 0xFF777777, false);
+        }
+
+        // Status effects, each with the cures you carry.
+        int ey = medsTop() + 26;
+        List<EffectRow> rows = effectRows();
+        g.drawString(font, rows.isEmpty() ? "No status effects" : "Status effects (click a cure to use it)", lx, ey, 0xFFFFE080, false);
+        for (EffectRow row : rows) {
+            MobEffectInstance e = row.effect;
+            boolean bad = Cures.harmful(e.getEffect());
+            g.blit(row.x, row.y, 0, 18, 18, minecraft.getMobEffectTextures().get(e.getEffect()));
+            String name = Component.translatable(e.getDescriptionId()).getString()
+                    + (e.getAmplifier() > 0 ? " " + (e.getAmplifier() + 1) : "");
+            g.drawString(font, name, row.x + 22, row.y + 1, bad ? 0xFFFF7755 : 0xFF7CFC7C, false);
+            g.drawString(font, MobEffectUtil.formatDuration(e, 1.0f, minecraft.level.tickRateManager().tickrate()).getString(),
+                    row.x + 22, row.y + 10, 0xFF888890, false);
+            if (row.cures.isEmpty() && e.getEffect().value().getCategory() != MobEffectCategory.BENEFICIAL) {
+                g.drawString(font, "cure: milk" + (e.getEffect().is(MobEffects.POISON) ? ", honey" : "") + (bad ? ", antidote" : ""),
+                        row.cureX, row.y + 5, 0xFF666670, false);
+            }
+            for (int i = 0; i < row.cures.size(); i++) {
+                int cx = row.cureX + i * 22;
+                ItemStack cure = carried.get(row.cures.get(i));
+                boolean hover = mouseX >= cx && mouseX < cx + 20 && mouseY >= row.y && mouseY < row.y + 20;
+                g.fill(cx, row.y, cx + 20, row.y + 20, hover ? 0xFF4C8C4C : 0xFF2A4A2A);
+                g.renderItem(cure, cx + 2, row.y + 2);
+                if (hover) {
+                    medTip = "Use " + cure.getHoverName().getString() + " to cure " + name;
+                }
+            }
         }
 
         if (medTip != null) {
@@ -157,6 +191,32 @@ public class StatusScreen extends Screen {
         }
     }
 
+    private record EffectRow(MobEffectInstance effect, int x, int y, int cureX, List<Integer> cures) {}
+
+    /** Active effects, harmful first, with the carried items (indices into ClientTetris.carried) that cure each. */
+    private List<EffectRow> effectRows() {
+        List<MobEffectInstance> effects = new ArrayList<>(minecraft.player.getActiveEffects());
+        effects.sort((a, b) -> Boolean.compare(Cures.harmful(b.getEffect()), Cures.harmful(a.getEffect())));
+        List<ItemStack> carried = ClientTetris.carried();
+        int lx = figX() + 8 * unit() + 16;
+        int y = medsTop() + 38;
+        List<EffectRow> rows = new ArrayList<>();
+        for (MobEffectInstance e : effects) {
+            List<Integer> cures = new ArrayList<>();
+            List<net.minecraft.world.item.Item> seen = new ArrayList<>();
+            for (int i = 0; i < carried.size(); i++) {
+                ItemStack s = carried.get(i);
+                if (!s.isEmpty() && !seen.contains(s.getItem()) && Cures.cures(s, e.getEffect())) {
+                    seen.add(s.getItem());
+                    cures.add(i);
+                }
+            }
+            rows.add(new EffectRow(e, lx, y, lx + 130, cures));
+            y += 22;
+        }
+        return rows;
+    }
+
     private int medsTop() {
         int ly = figY();
         for (BodyPart p : BodyPart.values()) {
@@ -167,6 +227,17 @@ public class StatusScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        for (EffectRow row : effectRows()) {
+            for (int i = 0; i < row.cures.size(); i++) {
+                int cx = row.cureX + i * 22;
+                if (mouseX >= cx && mouseX < cx + 20 && mouseY >= row.y && mouseY < row.y + 20) {
+                    ClientPlayNetworking.send(new TarkovNet.CureEffect(
+                            net.minecraft.core.registries.BuiltInRegistries.MOB_EFFECT.getKey(row.effect.getEffect().value()).toString(),
+                            row.cures.get(i)));
+                    return true;
+                }
+            }
+        }
         int lx = figX() + 8 * unit() + 16;
         int ly = medsTop();
         int mx = lx;

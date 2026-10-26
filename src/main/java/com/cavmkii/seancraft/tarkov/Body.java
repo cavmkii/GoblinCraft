@@ -54,6 +54,17 @@ public final class Body {
     }
 
     /** Health the parts add up to, as a fraction of max health. */
+    /** Share of max health still reachable: destroyed parts lock theirs away until a surgical kit restores them. */
+    public static float capFraction(float[] body) {
+        float cap = 1;
+        for (BodyPart p : BodyPart.values()) {
+            if (body[p.ordinal()] <= EPS) {
+                cap -= p.share;
+            }
+        }
+        return Math.max(0, cap);
+    }
+
     public static float total(TarkovData d) {
         float t = 0;
         for (BodyPart p : BodyPart.values()) {

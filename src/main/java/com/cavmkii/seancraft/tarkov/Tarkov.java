@@ -83,12 +83,23 @@ public final class Tarkov {
         TarkovContent.init();
         TarkovNet.register();
         Health.init();
+        Cures.init();
+        SpawnPoints.init();
+        TarkovLoot.init();
 
         ServerTickEvents.END_SERVER_TICK.register(Tarkov::tick);
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
             Runtime rt = runtime(handler.player);
             rt.graceUntil = handler.player.serverLevel().getGameTime() + 100;
             rt.inRaid = null;
+            TarkovData data = data(handler.player);
+            if (!data.placedAtSpawn) {
+                data.placedAtSpawn = true;
+                // Only brand-new characters; anyone who has already played stays where they are.
+                if (handler.player.getStats().getValue(net.minecraft.stats.Stats.CUSTOM.get(net.minecraft.stats.Stats.PLAY_TIME)) < 1200) {
+                    SpawnPoints.sendToSpawn(handler.player);
+                }
+            }
         });
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> RUNTIME.remove(handler.player.getUUID()));
         net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) -> {
@@ -154,7 +165,8 @@ public final class Tarkov {
             return;
         }
 
-        boolean inRaid = home == null;
+        boolean atSpawn = home == null && SpawnPoints.safe(level, player.position());
+        boolean inRaid = home == null && !atSpawn;
         if (rt.inRaid == null || rt.inRaid != inRaid) {
             if (inRaid) {
                 rt.raidStart = now;
@@ -172,6 +184,10 @@ public final class Tarkov {
                 player.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 60, 0, true, false, true));
             }
             ServerPlayNetworking.send(player, new TarkovNet.RaidState(1, 0, 0, -1));
+            return;
+        }
+        if (atSpawn) {
+            ServerPlayNetworking.send(player, new TarkovNet.RaidState(3, 0, 0, -1));
             return;
         }
 
@@ -227,7 +243,7 @@ public final class Tarkov {
         if (rt != null && rt.inRaid != null) {
             return rt.inRaid;
         }
-        return Hideouts.at(player.serverLevel(), player.position()) == null;
+        return Hideouts.at(player.serverLevel(), player.position()) == null && !SpawnPoints.safe(player.serverLevel(), player.position());
     }
 
     // ================================================================== elites and hunting parties
@@ -358,7 +374,7 @@ public final class Tarkov {
             Vec3 at = player.position().add(Math.cos(angle) * dist, 0, Math.sin(angle) * dist);
             BlockPos ground = Wander.surface(level, at);
             if (ground != null && Math.abs(ground.getY() - player.getY()) < 25 && level.getFluidState(ground.below()).isEmpty()
-                    && Hideouts.at(level, Vec3.atCenterOf(ground)) == null) {
+                    && Hideouts.at(level, Vec3.atCenterOf(ground)) == null && !SpawnPoints.safe(level, Vec3.atCenterOf(ground))) {
                 return ground;
             }
         }
@@ -514,6 +530,9 @@ public final class Tarkov {
     private static String describe(ItemStack stack) {
         if (stack.getItem() instanceof MedItem med) {
             return med.med.describe();
+        }
+        if (stack.is(TarkovContent.ANTIDOTE)) {
+            return "Cures every harmful effect: poison, wither, hunger, nausea...";
         }
         if (stack.getItem() instanceof SecureItem secure) {
             return "Secure pouch, " + secure.tier.width + "x" + secure.tier.height + ". Use it to install.";

@@ -29,6 +29,9 @@ public final class TarkovContent {
     public static final Item SECURE_GAMMA = secure("secure_gamma", SecureTier.GAMMA);
     public static final Item SECURE_KAPPA = secure("secure_kappa", SecureTier.KAPPA);
 
+    public static final Item ANTIDOTE = Registry.register(BuiltInRegistries.ITEM, SeanCraft.id("antidote"),
+            new AntidoteItem(new Item.Properties().stacksTo(8)));
+
     public static final java.util.Map<Med, Item> MEDS = new java.util.EnumMap<>(Med.class);
 
     static {
