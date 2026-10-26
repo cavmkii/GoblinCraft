@@ -1,0 +1,14 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "GBG",
+    "CCC"
+  ],
+  "key": {
+    "G": { "item": "minecraft:gold_ingot" },
+    "B": { "item": "minecraft:book" },
+    "C": { "item": "minecraft:crying_obsidian" }
+  },
+  "result": { "id": "goblincraft:altar_of_regret", "count": 1 }
+}

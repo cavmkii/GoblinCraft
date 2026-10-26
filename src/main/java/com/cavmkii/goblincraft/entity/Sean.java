@@ -4,6 +4,7 @@ import com.cavmkii.goblincraft.Cfg;
 import com.cavmkii.goblincraft.Lines;
 import com.cavmkii.goblincraft.Speech;
 import com.cavmkii.goblincraft.item.ModItems;
+import com.cavmkii.goblincraft.rpg.RpgContent;
 import com.cavmkii.goblincraft.world.WorldDirector;
 import java.util.HashMap;
 import java.util.Map;
@@ -140,6 +141,8 @@ public class Sean extends AbstractVillager {
         offers.add(offer(new ItemCost(Items.EMERALD, 5), new ItemStack(ModItems.DIDDY_OIL, 3)));
         offers.add(new MerchantOffer(new ItemCost(Items.EMERALD_BLOCK, 6), Optional.of(new ItemCost(Items.DIAMOND, 7)),
                 new ItemStack(ModItems.SIXTY_SEVEN), 9999, 0, 0f));
+        offers.add(new MerchantOffer(new ItemCost(Items.EMERALD_BLOCK, 32), Optional.of(new ItemCost(Items.DIAMOND_BLOCK, 2)),
+                new ItemStack(RpgContent.ORB_OF_REGRET), 9999, 0, 0f));
     }
 
     private static MerchantOffer offer(ItemCost cost, ItemStack result) {

@@ -2,6 +2,7 @@ package com.cavmkii.goblincraft;
 
 import com.cavmkii.goblincraft.entity.ModEntities;
 import com.cavmkii.goblincraft.item.ModItems;
+import com.cavmkii.goblincraft.rpg.Rpg;
 import com.cavmkii.goblincraft.world.WorldDirector;
 import java.util.Arrays;
 import java.util.Locale;
@@ -34,6 +35,7 @@ public final class GoblinCraft implements ModInitializer {
 
         ModItems.init();
         ModEntities.init();
+        Rpg.init();
 
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
             SnowQuip.reset();
@@ -48,7 +50,10 @@ public final class GoblinCraft implements ModInitializer {
             SnowQuip.tick(server);
         });
 
-        CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> GoblinCommands.register(dispatcher));
+        CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
+            GoblinCommands.register(dispatcher);
+            Rpg.registerCommands(dispatcher);
+        });
 
         // Saying the phrase: normal chat, and /say or /me from a player.
         ServerMessageEvents.CHAT_MESSAGE.register((message, sender, params) -> onSaid(sender, message.signedContent()));

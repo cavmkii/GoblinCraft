@@ -10,6 +10,7 @@ import com.cavmkii.goblincraft.entity.ModEntities;
 import com.cavmkii.goblincraft.entity.SeanSecurity;
 import com.cavmkii.goblincraft.entity.Wander;
 import com.cavmkii.goblincraft.item.ModItems;
+import com.cavmkii.goblincraft.rpg.Rpg;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -235,6 +236,11 @@ public final class BabyWar {
                 spawnWave();
             }
         } else if (babies.isEmpty()) {
+            for (ServerPlayer player : level.players()) {
+                if (player.position().distanceTo(camp) < 200) {
+                    Rpg.addClassXp(player, 2000);
+                }
+            }
             end("The last baby has fallen. The Baby Wars are over... for now.");
         }
     }

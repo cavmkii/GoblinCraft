@@ -5,6 +5,8 @@ import com.cavmkii.goblincraft.Lines;
 import com.cavmkii.goblincraft.PowerLevel;
 import com.cavmkii.goblincraft.Speech;
 import com.cavmkii.goblincraft.item.ModItems;
+import com.cavmkii.goblincraft.rpg.Rpg;
+import com.cavmkii.goblincraft.rpg.RpgContent;
 import com.cavmkii.goblincraft.world.GoblinData;
 import com.cavmkii.goblincraft.world.WorldDirector;
 import java.util.ArrayList;
@@ -238,6 +240,7 @@ public class Joe extends PathfinderMob {
     }
 
     private void onStruckBy(ServerPlayer attacker) {
+        Rpg.addClassXp(attacker, 5);
         long now = level().getGameTime();
         Long until = provokers.get(attacker.getUUID());
         boolean wasHostile = until != null && until > now;
@@ -483,6 +486,12 @@ public class Joe extends PathfinderMob {
             if (director != null && director.claim(WorldDirector.Kind.JOE, this)) {
                 say(Lines.pick(Lines.joeDeath()), true);
                 dropStash(director);
+                if (getRandom().nextFloat() < 0.25f) {
+                    spawnAtLocation(new ItemStack(RpgContent.ORB_OF_REGRET));
+                }
+                if (source.getEntity() instanceof ServerPlayer killer) {
+                    Rpg.addClassXp(killer, 500);
+                }
                 director.onDeath(WorldDirector.Kind.JOE, this);
             }
         }

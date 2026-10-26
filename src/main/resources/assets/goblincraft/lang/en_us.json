@@ -1,6 +1,5 @@
 {
   "itemGroup.goblincraft": "GoblinCraft",
-
   "item.goblincraft.soda": "Soda",
   "item.goblincraft.soda.desc": "Sean's own brand. Tastes like a thunderstorm. A full meal and Health Boost for 20 minutes.",
   "item.goblincraft.merch": "Merch",
@@ -15,7 +14,6 @@
   "item.goblincraft.sixty_seven.desc": "Six. Seven. End-game fists. Sean won't say where he got them.",
   "item.goblincraft.baby_bonnet": "Baby Bonnet",
   "item.goblincraft.baby_bonnet.desc": "Joe's gift to veterans of the Baby Wars. Wear it and his babies treat you as one of their own. Sean's Security does not.",
-
   "entity.goblincraft.joe": "Joe",
   "entity.goblincraft.sean": "Sean",
   "entity.goblincraft.baby_commando": "Diaper Commando",
@@ -23,5 +21,18 @@
   "entity.goblincraft.baby_berserker": "Binky Berserker",
   "entity.goblincraft.sean_security": "Sean's Security",
   "entity.goblincraft.spell": "Spell",
-  "entity.goblincraft.baby_bottle": "Baby Bottle"
+  "entity.goblincraft.baby_bottle": "Baby Bottle",
+  "item.goblincraft.orb_of_regret": "Orb of Regret",
+  "item.goblincraft.orb_of_regret.desc": "Above level 40, the Altar of Regret demands one of these, on top of your life.",
+  "block.goblincraft.altar_of_regret": "Altar of Regret",
+  "block.goblincraft.altar_of_regret.desc": "Use it to clear your passive web. It kills you, and above level 20 you don't get every point back.",
+  "item.goblincraft.altar_of_regret.desc": "Use it to clear your passive web. It kills you, and above level 20 you don't get every point back.",
+  "entity.goblincraft.skill_projectile": "Ability",
+  "key.categories.goblincraft": "GoblinCraft",
+  "key.goblincraft.web": "Open passive web",
+  "key.goblincraft.ability1": "Ability 1",
+  "key.goblincraft.ability2": "Ability 2",
+  "key.goblincraft.ability3": "Ability 3",
+  "key.goblincraft.ability4": "Ability 4",
+  "key.goblincraft.ability5": "Ability 5"
 }

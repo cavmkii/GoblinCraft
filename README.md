@@ -86,6 +86,71 @@ Every spell is an area-of-effect blast, and plenty of them miss and land around 
 
 Neither of them can drop the other below 15% health, so the fight always ends in a stalemate. Joe then storms off. After a 10-minute cooldown they can fight again. Players nearby get a warning on screen when a fight starts.
 
+## Character system
+
+There's no class to pick. Your class is wherever you spend your points on the **passive web**. Three things build a character:
+
+- **Character level** (1–60) comes from its own class XP. Vanilla XP is left alone for enchanting. You earn class XP from:
+  - kills (twice the mob's max health)
+  - ores (6, or 40 for diamond, emerald and netherite)
+  - hitting Joe (5 per hit) and killing him (500)
+  - winning a Baby War (2000)
+
+  Each level gives one web point. Ability slots open at levels 1, 10, 25, 40 and 60.
+- **Use-skills** (Valheim-style) rank 0–100 as you use them. Each one improves its own action, and together they feed your attributes. When you die you lose 5% of your progress in every skill.
+
+  | Strength | Agility | Intelligence |
+  |---|---|---|
+  | Swords, Axes: up to +50% damage with that weapon | Bows: up to +50% arrow damage | Enchanting: up to 40% chance to refund the levels |
+  | Blocking: reflect up to 50% of blocked damage | Running: up to +15% sprint speed | Brewing: potions you drink last up to 50% longer |
+  | Mining: up to +100% breaking speed | Sneaking: faster sneaking | Casting: up to +25% ability damage and faster cooldowns |
+  | | Swimming: faster swimming, longer breath | Farming: up to 50% chance of extra crops |
+
+- **Attributes** (Dota-style). Each one is the sum of its four skill ranks ÷ 10, plus 0.25 per level, plus web nodes. Your highest attribute is your primary and adds melee and arrow damage.
+  - **Strength:** +0.4 max health and +0.01 health regen per point, and a bigger Rage pool.
+  - **Agility:** +0.6% attack speed, +0.25% movement speed and +0.08 armor per point, and a bigger Stamina pool.
+  - **Intelligence:** a bigger Mana pool and faster regen, and +1% ability damage per point.
+
+### The passive web
+
+Press **K** to open it. It has 121 nodes:
+- the start node in the middle
+- six regions around it: Warrior (Str), Duelist (Str/Agi), Ranger (Agi), Shadow (Agi/Int), Mage (Int) and Templar (Int/Str)
+- bridge nodes linking each region to the next
+
+Each region has attribute nodes, four notables, four active skills and a keystone with a trade-off. Going straight out to one region gives you the "true" class; spreading out gives hybrids.
+
+To use it: click a connected node to take it. Drag to pan and scroll to zoom. To slot a skill, click a learned active skill and then a slot at the bottom. Right-click a slot to empty it. The left panel shows your level, points, path, attributes and skill ranks.
+
+| Region | Active skills | Keystone |
+|---|---|---|
+| Warrior (Rage) | Leap Slam, War Cry, Ground Slam, Berserk | Juggernaut: +40% health, +50% knockback resistance, −15% speed |
+| Duelist (Stamina/Rage) | Lunge, Riposte, Whirlwind, Blade Flurry | Bladedancer: +30% attack speed, +10% crit, −6 armor |
+| Ranger (Stamina) | Dash, Volley, Rain of Arrows, Hunter's Mark | Wind Walker: no fall damage, +15% speed, −20% health |
+| Shadow (Stamina/Mana) | Smoke Bomb, Shadow Step, Poison Cloud, Blade Fan | Ghost: invisible while sneaking, +30% backstab, −20% health |
+| Mage (Mana) | Fireball, Frost Nova, Blink, Chain Lightning | Mind over Matter: 30% of damage taken comes from mana |
+| Templar (Mana/Rage) | Consecrate, Holy Smite, Divine Shield, Judgment | Holy Aura: burn nearby monsters, +0.5 regen |
+
+### Abilities and resources
+
+Learned skills go on their own five-slot bar to the right of the hotbar, cast with **Z, R, G, V, B** (rebindable under Controls → GoblinCraft). Each skill costs its region's resource and has a cooldown. A bar appears above the ability bar for each resource your slotted skills use:
+- **Rage:** builds when you hit or get hit, and drains after 5 s out of combat.
+- **Mana:** regenerates, faster with Intelligence.
+- **Stamina:** its own bar, separate from hunger. Vanilla sprinting doesn't use it.
+
+You get a popup whenever you level up or a skill ranks up.
+
+### Respec: the Altar of Regret
+
+Craft it from 2 gold ingots and a book over 3 crying obsidian, then place it. Using it clears your whole web **and kills you on the spot**; it's a real death, so the skill penalty applies too. How much you get back depends on your level:
+- **Levels 1–20:** every point.
+- **Levels 21–40:** 75%.
+- **Levels 41–60:** 50%, and it also uses up an **Orb of Regret**. Joe drops one 25% of the time; Sean sells them for 32 emerald blocks and 2 diamond blocks.
+
+Points you don't get back are gone for good.
+
+Admin commands for testing: `/character xp <player> <amount>`, `/character skill <player> <skill> <level>`, `/character reset <player>`.
+
 ## Install
 
 1. Install [Fabric Loader](https://fabricmc.net/use/) for Minecraft 1.21.1 and put [Fabric API](https://modrinth.com/mod/fabric-api) in `mods/`.
@@ -150,6 +215,12 @@ Sean's lines about selling weather charms now pitch his actual stock. Joe's line
 | `world/BabyWar.java` | Trigger counting, camp, waves, curses, bonnets, ending. |
 | `world/GoblinData.java` | Saved with the world: which Joe and Sean are real, respawn timers, Joe's stash, camp blocks to clean up. |
 | `client/*` | Renderers, item tint for the dyed leather items, tooltips. |
+| `rpg/PassiveWeb.java`, `rpg/WebNode.java` | The web: a 19-node template repeated per region, plus bridges. Built identically on both sides, so only node ids go over the network. |
+| `rpg/PlayerData.java`, `rpg/Stats.java` | The saved character (a Fabric attachment kept through death) and everything derived from it. |
+| `rpg/Rpg.java` | Server side: xp, death penalty, attribute modifiers, resources, casting, slots, respec, `/character`. |
+| `rpg/RpgDamage.java`, `mixin/*` | Damage rules (weapon skills, crits, lifesteal, dodge, parry, blocking) and the hooks for enchanting, brewing and potion duration. |
+| `rpg/SkillEffects.java` | What the 24 active skills do. |
+| `client/rpg/*` | Web screen, ability bar and resource bars, popups, keys, altar confirmation. |
 
 Item icons reuse vanilla textures (honey bottle, crossbow, paper and so on) through the item model files, so the mod ships no textures of its own.
 

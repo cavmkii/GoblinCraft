@@ -61,7 +61,11 @@ public final class ModItems {
             FabricItemGroup.builder()
                     .icon(() -> new ItemStack(SODA))
                     .title(Component.translatable("itemGroup.goblincraft"))
-                    .displayItems((params, output) -> DESCRIBED.forEach(output::accept))
+                    .displayItems((params, output) -> {
+                        DESCRIBED.forEach(output::accept);
+                        output.accept(com.cavmkii.goblincraft.rpg.RpgContent.ALTAR_ITEM);
+                        output.accept(com.cavmkii.goblincraft.rpg.RpgContent.ORB_OF_REGRET);
+                    })
                     .build());
 
     private ModItems() {}
