@@ -5,8 +5,13 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "BrewedPotionTriggerMixin",
+    "FurnaceAccessor",
+    "FurnaceMixin",
+    "InventoryMixin",
     "LivingEntityMixin",
+    "PlayerDeathMixin",
     "PlayerMixin",
+    "PlayerProjectileMixin",
     "PotionItemMixin"
   ],
   "injectors": {

@@ -3,6 +3,7 @@ package com.cavmkii.goblincraft;
 import com.cavmkii.goblincraft.entity.ModEntities;
 import com.cavmkii.goblincraft.item.ModItems;
 import com.cavmkii.goblincraft.rpg.Rpg;
+import com.cavmkii.goblincraft.tarkov.Tarkov;
 import com.cavmkii.goblincraft.world.WorldDirector;
 import java.util.Arrays;
 import java.util.Locale;
@@ -36,6 +37,9 @@ public final class GoblinCraft implements ModInitializer {
         ModItems.init();
         ModEntities.init();
         Rpg.init();
+        com.cavmkii.goblincraft.parts.PartItems.init();
+        com.cavmkii.goblincraft.tetris.Tetris.init();
+        Tarkov.init();
 
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
             SnowQuip.reset();

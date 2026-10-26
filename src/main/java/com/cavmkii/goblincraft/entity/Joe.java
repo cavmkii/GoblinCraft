@@ -511,9 +511,8 @@ public class Joe extends PathfinderMob {
     // ---------------------------------------------------------------- helpers
 
     public static boolean carries(Player player, Item item) {
-        Inventory inventory = player.getInventory();
-        for (int i = 0; i < inventory.getContainerSize(); i++) {
-            if (inventory.getItem(i).is(item)) {
+        for (ItemStack stack : com.cavmkii.goblincraft.tetris.Tetris.carried(player)) {
+            if (stack.is(item)) {
                 return true;
             }
         }

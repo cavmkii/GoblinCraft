@@ -1,6 +1,6 @@
 # GoblinCraft
 
-A Fabric mod for Minecraft Java 1.21.1 that adds two unique, persistent NPCs to a world. It's a port of [ValheimGoblinPack](https://github.com/cavmkii/ValheimGoblinPack); where Valheim and Minecraft differ, the closest Minecraft equivalent is used. Those substitutions are listed [below](#what-changed-from-the-valheim-version).
+A Fabric mod for Minecraft Java 1.21.1. It started as a port of [ValheimGoblinPack](https://github.com/cavmkii/ValheimGoblinPack) (two unique, persistent NPCs). It now also has a character system, and the mechanics of [TarkoValheim](https://github.com/cavmkii/TarkoValheim): raids and hideouts, body-part health, modular weapons and armor, and a Tetris inventory. Where Valheim and Minecraft differ, the closest Minecraft equivalent is used. Those substitutions are listed [below](#what-changed-from-the-valheim-version).
 
 Everything runs on the server. Clients need the mod too (for the entity renderers and items), but no client config.
 
@@ -151,6 +151,84 @@ Points you don't get back are gone for good.
 
 Admin commands for testing: `/character xp <player> <amount>`, `/character skill <player> <skill> <level>`, `/character reset <player>`.
 
+## Raids and hideout
+
+From [TarkoValheim](https://github.com/cavmkii/TarkoValheim). The systems stack with the character system: a raid death costs your kit **and** the 5% skill loss, body-part health is shared out of your attribute-boosted max health, and Brewing improves meds.
+
+### Hideout and raids
+
+Craft a **Hideout Bench** (3 cobblestone over planks, a crafting table and planks) and place it. Everything within 30 blocks of it is your hideout; anywhere else you're **in raid**. The HUD shows which, with a raid clock.
+
+- **Threat** rises the longer a raid lasts: after the calm period (default 5 minutes), one level per step (default 5 minutes), up to 4. Monsters that appear near you can spawn elite (1 or 2 stars: +100% health and +50% damage per star), and hunting parties are sent after you.
+- **Dying in raid** follows `Raid.DeathRule`. The default, `LOSE_EVERYTHING`, means no drops: everything outside your secure pouch is gone. `KEEP_SECURE` drops your kit normally and keeps the pouch. `VANILLA` drops everything, the pouch included.
+- Dying inside the hideout is a normal Minecraft death.
+- Portals are untouched.
+
+**Modules**, built at the bench from what you carry plus the **stash** (every chest and barrel inside the hideout). Each takes real time to build, and only one builds at a time.
+
+| Module | Levels |
+|---|---|
+| Workshop | furnaces in the hideout smelt 25/50/75% faster; unlocks Beta/Gamma/Kappa pouches and bigger rigs and packs; builds modules faster |
+| Medstation | unlocks meds by tier; bleeding stops in the hideout, then fractures mend, then faster regeneration |
+| Perimeter | hideout radius +10/+20/+30 |
+| Intel center | +3/+6 calm minutes per raid; warns you when a hunting party is sent |
+
+The bench's CRAFT tab makes things only a hideout can: secure pouch upgrades, meds, rigs and backpacks.
+
+### Body-part health
+
+Damage lands on one of seven parts (head, thorax, stomach, two arms, two legs), chosen by the height and side the hit came from (falls hit the legs; damage with no direction, like fire, is spread). Each part holds a fixed share of your max health. Parts can **bleed** (light or heavy, losing health over time), **fracture** (legs slow you, arms weaken your swing), or be **destroyed**. A destroyed head or thorax kills you.
+
+Meds come from the Hideout Bench (Medstation 1–3): bandage, tourniquet, splint, painkillers, field kit and surgical kit. Use one from the hotbar to treat the worst part, or press **H** (or the STATUS tab) to pick the part yourself. The STATUS tab lists meds from everything you carry, grids included.
+
+### Modular weapons and armor
+
+Swords, axes, bows, crossbows, shields and all four armor pieces are built from parts:
+- weapons: head (blade, axe head or limbs), handle, guard, wrap;
+- armor: plates, padding, wrap.
+
+The vanilla recipes for those items are replaced: craft the parts, then lay them out in a crafting grid to assemble the item. A standard build is exactly the vanilla item. Other parts shift damage, swing speed, durability, block, armor and weight, and the normal tooltip shows the result.
+
+The **Weapon Bench** (smithing table + crafting table, shapeless) swaps parts on an existing item, and levels a part up (to level 4) with its own material.
+
+### Tetris inventory
+
+In survival, **E** (or **J**) opens the Tarkov screen instead of the vanilla inventory. Creative players keep the vanilla one.
+
+- **GEAR:**
+  - Armor, off-hand, and slots for a **rig** and a **backpack**.
+  - The 9-slot hotbar works as in vanilla.
+  - The grids: pockets (5x2), the rig's grid, the backpack's grid, and the **secure pouch** (2x2 Alpha up to 4x3 Kappa).
+  - Items take real space: swords are 1x3, chestplates 3x3, shields 2x2, and so on.
+  - Pickups fill pockets, then rig, then backpack. Weapons and tools go to an empty hotbar slot first. If nothing has room, the item stays on the ground.
+  - Controls:
+    - click to pick up, click to put down;
+    - **R** rotates the held item;
+    - **Shift**+click takes half a stack;
+    - **Ctrl**+click transfers;
+    - **1–9** sends the hovered item to that hotbar slot;
+    - right-click or Esc lets go.
+  - SORT repacks every grid, and the DISCARD box drops the item.
+  - A rig or backpack has to be empty before you take it off.
+- **Chests and barrels** open on the GEAR tab, on the right. Inside your hideout, the whole stash shows there too, and STASH ALL empties your pockets, rig and backpack into it. Sneak+use with an empty hand still opens the vanilla screen.
+- **CRAFTING** lists every crafting recipe you can make right now, from your hotbar and grids (and the stash, when you're home). 2x2 recipes work anywhere. 3x3 recipes need a crafting table within 6 blocks, or the hideout. Vanilla crafting tables still work too.
+- **SKILLS:** character level, attributes and the 12 use-skills.
+- **STATUS:** body health and meds.
+
+Bows, crossbows and the Glock take arrows from the rig, pockets or backpack when the hotbar has none.
+
+New characters start with a Scav vest (4x2), a Sling bag (3x3) and an Alpha pouch. Better gear comes from the Hideout Bench:
+
+| Item | Grid | Needs |
+|---|---|---|
+| Scav vest (rig) | 4x2 | 6 leather, 4 string |
+| Sling bag | 3x3 | 4 leather, 4 string |
+| Scav backpack | 4x5 | Workshop 1; 12 leather, 8 string, 2 iron |
+| Carrier rig | 5x3 | Workshop 2; 10 leather, 6 string, 6 iron |
+| Pilgrim backpack | 5x7 | Workshop 3; 24 leather, 12 string, 4 gold |
+
+The old slot-based secure container was replaced by the pouch grid. What was in it moves into the pouch the first time you log in.
+
 ## Install
 
 1. Install [Fabric Loader](https://fabricmc.net/use/) for Minecraft 1.21.1 and put [Fabric API](https://modrinth.com/mod/fabric-api) in `mods/`.
@@ -221,6 +299,13 @@ Sean's lines about selling weather charms now pitch his actual stock. Joe's line
 | `rpg/RpgDamage.java`, `mixin/*` | Damage rules (weapon skills, crits, lifesteal, dodge, parry, blocking) and the hooks for enchanting, brewing and potion duration. |
 | `rpg/SkillEffects.java` | What the 24 active skills do. |
 | `client/rpg/*` | Web screen, ability bar and resource bars, popups, keys, altar confirmation. |
+| `tarkov/Tarkov.java`, `tarkov/Hideouts.java`, `tarkov/Module.java`, `tarkov/Stash.java` | Raid tracking, threat, elites and hunting parties, raid death rules; hideouts (saved per dimension), modules, the stash. |
+| `tarkov/Health.java`, `tarkov/Body.java`, `tarkov/Med.java` | Body-part health: hit location, bleeds, fractures, limb effects, meds. |
+| `parts/*` | Part catalogue, the installed-parts data component, stat rewriting, part assembly recipe, Weapon Bench. |
+| `tetris/Tetris.java` | Tetris inventory, server side: the inbox sweep, pickups, moves, containers and stash, crafting, death. |
+| `tetris/Grid.java`, `tetris/ItemSize.java`, `tetris/InvData.java` | Grid placement, item footprints, the saved inventory (a Fabric attachment). |
+| `mixin/InventoryMixin.java`, `mixin/PlayerProjectileMixin.java` | Pickups into the grids; bows finding arrows in the grids. |
+| `client/tarkov/*` | Raid HUD, Hideout screen, the Tarkov screen (GEAR, CRAFTING, SKILLS, STATUS), E-key handling. |
 
 Item icons reuse vanilla textures (honey bottle, crossbow, paper and so on) through the item model files, so the mod ships no textures of its own.
 
@@ -236,6 +321,20 @@ It builds cleanly (no compiler warnings) against Minecraft 1.21.1, Loom 1.11.8, 
 - **The Baby Wars:** the title, the thunderstorm, the camp, the bonnet handed out, waves 1 to 4, and cursing a wave at the cauldron ("cursed Joe's next wave: Slow!"). A full war ran to "The last baby has fallen" and the camp was removed.
 - **The snow line** fired when the war's storm started snowing on the player.
 - **Sean's trade screen** opens with all six offers.
+
+- **Raids and hideout:** raid HUD and threat, elite strays and hunting parties, a raid death wiping the kit and keeping the pouch, the Workshop building from stash chests.
+- **Body health:** the STATUS screen, bleeds, field kit healing.
+- **Parts:** assembling a sword in a crafting grid, swapping and levelling parts at the Weapon Bench, the armor bench (diamond chestplate with netherite plates: +6% armor), tooltips showing the new stats.
+- **Tetris inventory:**
+  - E opens the screen; pickups fill pockets, then the backpack.
+  - The old secure container's contents moved into the pouch.
+  - Equipping a chestplate from the backpack (the vanilla "Suit Up" advancement fires).
+  - Rotating a sword into the rig as 3x1.
+  - STASH ALL into a hideout chest, and Ctrl+click back out.
+  - A barrel outside the hideout opening on GEAR and looting from it.
+  - Crafting planks from logs in the stash, with search.
+  - A bow firing arrows from the rig (39 → 37).
+  - A raid death leaving only the pouch, with the stash intact.
 
 Not exercised yet: pickpocketing and the stash drop, the Restraining Order, rage from chat, the Glock, Soda and Diddy Oil, and the stranded-NPC relocation. These need a real player wandering around for a while. Treat a first real session as a test of those.
 

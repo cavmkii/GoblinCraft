@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "pattern": [
+    "HHH"
+  ],
+  "key": {
+    "H": {
+      "item": "minecraft:armadillo_scute"
+    }
+  },
+  "result": {
+    "id": "goblincraft:padding_scute",
+    "count": 1
+  }
+}

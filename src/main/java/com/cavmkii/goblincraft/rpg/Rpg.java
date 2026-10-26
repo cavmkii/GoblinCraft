@@ -460,7 +460,7 @@ public final class Rpg {
 
     public static void openRespec(ServerPlayer player, BlockPos pos) {
         PlayerData data = data(player);
-        boolean hasOrb = player.getInventory().contains(new ItemStack(RpgContent.ORB_OF_REGRET));
+        boolean hasOrb = findOrb(player) != null;
         ServerPlayNetworking.send(player, new RpgNet.OpenRespec(pos, refundPercent(data.level), needsOrb(data.level), hasOrb,
                 data.spentPoints()));
     }
@@ -477,12 +477,12 @@ public final class Rpg {
             return;
         }
         if (needsOrb(data.level) && !player.isCreative()) {
-            int slot = findOrb(player);
-            if (slot < 0) {
+            ItemStack orb = findOrb(player);
+            if (orb == null) {
                 player.displayClientMessage(Component.literal("At your level the altar demands an Orb of Regret."), true);
                 return;
             }
-            player.getInventory().getItem(slot).shrink(1);
+            orb.shrink(1);
         }
         int spent = data.spentPoints();
         int refunded = (int) Math.round(spent * refundPercent(data.level) / 100.0);
@@ -495,13 +495,13 @@ public final class Rpg {
         player.kill();
     }
 
-    private static int findOrb(ServerPlayer player) {
-        for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
-            if (player.getInventory().getItem(i).is(RpgContent.ORB_OF_REGRET)) {
-                return i;
+    private static ItemStack findOrb(ServerPlayer player) {
+        for (ItemStack stack : com.cavmkii.goblincraft.tetris.Tetris.carried(player)) {
+            if (stack.is(RpgContent.ORB_OF_REGRET)) {
+                return stack;
             }
         }
-        return -1;
+        return null;
     }
 
     // ================================================================== commands
