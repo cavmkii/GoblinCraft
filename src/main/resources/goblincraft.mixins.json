@@ -1,0 +1,15 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.cavmkii.goblincraft.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "BrewedPotionTriggerMixin",
+    "LivingEntityMixin",
+    "PlayerMixin",
+    "PotionItemMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
