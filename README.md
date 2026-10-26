@@ -1,4 +1,4 @@
-# GoblinCraft
+# SeanCraft
 
 A Fabric mod for Minecraft Java 1.21.1. It started as a port of [ValheimGoblinPack](https://github.com/cavmkii/ValheimGoblinPack) (two unique, persistent NPCs). It now also has a character system, and the mechanics of [TarkoValheim](https://github.com/cavmkii/TarkoValheim): raids and hideouts, body-part health, modular weapons and armor, and a Tetris inventory. Where Valheim and Minecraft differ, the closest Minecraft equivalent is used. Those substitutions are listed [below](#what-changed-from-the-valheim-version).
 
@@ -9,7 +9,7 @@ Everything runs on the server. Clients need the mod too (for the entity renderer
 A small goblin (a green-tinted piglin, 0.8x size) who roams around looking for Sean.
 
 - **Wanders.** He walks toward far-off points, and about half the time (`Joe.SeanSeekChance`) toward Sean's last known position. He avoids oceans and rivers.
-- **Only talks about Sean or the Baby Wars.** Every 18–40 s, if a player is within 40 blocks, he says a line in chat, often using the nearest player's name. His dialogue is in `config/goblincraft/joe_lines.txt`, created on first run. Edit it, then run `/goblincraft reload`.
+- **Only talks about Sean or the Baby Wars.** Every 18–40 s, if a player is within 40 blocks, he says a line in chat, often using the nearest player's name. His dialogue is in `config/seancraft/joe_lines.txt`, created on first run. Edit it, then run `/seancraft reload`.
 - **Throws up.** Every 1–2.5 minutes, if a player is within 40 blocks, he stops and spends four seconds spraying slime (`Joe.PukeEnabled`, `Joe.PukeIntervalMin/Max`).
 - **Steals.** He walks up to a nearby player and takes up to 10 items from one random stack. He never takes from your hand or armor slots. Then he gloats and runs off. Everything he steals is saved with the world, and killing him drops all of it with its enchantments and durability intact.
 - **Passive until hit.** Joe doesn't target a player until that player damages him. He then stays hostile to that player for 90 s (`Joe.ProvokeSeconds`). Other players stay safe unless they hit him too.
@@ -133,7 +133,7 @@ To use it: click a connected node to take it. Drag to pan and scroll to zoom. To
 
 ### Abilities and resources
 
-Learned skills go on their own five-slot bar to the right of the hotbar, cast with **Z, R, G, V, B** (rebindable under Controls → GoblinCraft). Each skill costs its region's resource and has a cooldown. A bar appears above the ability bar for each resource your slotted skills use:
+Learned skills go on their own five-slot bar to the right of the hotbar, cast with **Z, R, G, V, B** (rebindable under Controls → SeanCraft). Each skill costs its region's resource and has a cooldown. A bar appears above the ability bar for each resource your slotted skills use:
 - **Rage:** builds when you hit or get hit, and drains after 5 s out of combat.
 - **Mana:** regenerates, faster with Intelligence.
 - **Stamina:** its own bar, separate from hunger. Vanilla sprinting doesn't use it.
@@ -211,9 +211,15 @@ In survival, **E** (or **J**) opens the Tarkov screen instead of the vanilla inv
   - SORT repacks every grid, and the DISCARD box drops the item.
   - A rig or backpack has to be empty before you take it off.
 - **Chests and barrels** open on the GEAR tab, on the right. Inside your hideout, the whole stash shows there too, and STASH ALL empties your pockets, rig and backpack into it. Sneak+use with an empty hand still opens the vanilla screen.
-- **CRAFTING** lists every crafting recipe you can make right now, from your hotbar and grids (and the stash, when you're home). 2x2 recipes work anywhere. 3x3 recipes need a crafting table within 6 blocks, or the hideout. Vanilla crafting tables still work too.
+- **CRAFTING** lists every crafting recipe you can make right now, from your hotbar and grids (and the stash, when you're home). 2x2 recipes work anywhere. 3x3 recipes need a crafting table within 6 blocks, or the hideout. The **CRAFTING GRID** button opens a real grid: 3x3 under the same rule, otherwise the vanilla 2x2.
 - **SKILLS:** character level, attributes and the 12 use-skills.
 - **STATUS:** body health and meds.
+
+**Vanilla screens** (crafting table, furnace, anvil, brewing stand and so on) show your grids beside them. Their own 27 inventory slots are covered, since they're always empty.
+- Click a grid item to pick it up onto the cursor, then drop it in a vanilla slot. Carry something from a vanilla slot onto a grid cell to put it there.
+- Right-click takes half a stack, or puts down one item.
+- Shift+click sends a grid item straight into the screen's slots.
+- **R** rotates what you're carrying.
 
 Bows, crossbows and the Glock take arrows from the rig, pockets or backpack when the hotbar has none.
 
@@ -229,10 +235,26 @@ New characters start with a Scav vest (4x2), a Sling bag (3x3) and an Alpha pouc
 
 The old slot-based secure container was replaced by the pouch grid. What was in it moves into the pouch the first time you log in.
 
+## Compatibility
+
+- **[FallingTree](https://www.curseforge.com/minecraft/mc-mods/falling-tree)** (1.21.1, Fabric). Checked against its source:
+  - Its mixins (`BlockBehaviour.getDestroyProgress`, `ServerLevel.updateNeighborsAt`) don't overlap with this mod's.
+  - Felled logs drop as item entities, so they go into your grids like any pickup.
+  - Tool wear goes through vanilla `hurtAndBreak`, so assembled axes with modified durability wear normally.
+  - Assembled axes are still `AxeItem`s, so FallingTree recognises them.
+- **[Grappling Hook Mod](https://www.curseforge.com/minecraft/mc-mods/grappling-hook-mod)** (yyon, 1.21.1, Fabric; it also needs Forge Config API Port). Checked against its source:
+  - Its mixins on `LivingEntity.hurt`/`causeFallDamage` and `Player.attack` are plain injects that combine with this mod's.
+  - Its keys default to Shift and Space, which don't clash with this mod's keys.
+  - Firing a hook gives Bows & Crossbows xp (once per second, so a double hook counts once).
+  - Hooks and launchers go to the hotbar on pickup.
+  - Its upgrade recipes work on the CRAFTING tab, at a crafting table, or in the CRAFTING GRID.
+
+Neither has been run alongside this mod yet; the sandbox this was built in couldn't download them.
+
 ## Install
 
 1. Install [Fabric Loader](https://fabricmc.net/use/) for Minecraft 1.21.1 and put [Fabric API](https://modrinth.com/mod/fabric-api) in `mods/`.
-2. Build the jar (below) and put `build/libs/goblincraft-<version>.jar` in `mods/`.
+2. Build the jar (below) and put `build/libs/seancraft-<version>.jar` in `mods/`.
 3. The server and every player need the mod.
 
 ## Building
@@ -247,14 +269,14 @@ The jar lands in `build/libs/`. `./gradlew runClient` starts a dev client with t
 
 ## Config
 
-`config/goblincraft/goblincraft.properties` is written with every setting and a comment for each on first run. Only the server's copy matters. Reload with `/goblincraft reload`, which also reloads Joe's lines. Some values (Joe's size, Sean's health) only apply to newly spawned NPCs.
+`config/seancraft/seancraft.properties` is written with every setting and a comment for each on first run. Only the server's copy matters. Reload with `/seancraft reload`, which also reloads Joe's lines. Some values (Joe's size, Sean's health) only apply to newly spawned NPCs.
 
 ## Commands
 
-- `/goblincraft where`: Joe's and Sean's last known positions, whether they're loaded, whether Joe is enraged, and the war status.
-- `/goblincraft summon joe|sean` (op): replaces Joe or Sean with a fresh one in front of you. Handy for testing a fight: summon both.
-- `/goblincraft babywars start|stop` (op): start the Baby Wars at your position, or call them off.
-- `/goblincraft reload` (op): reload the config and `joe_lines.txt`.
+- `/seancraft where`: Joe's and Sean's last known positions, whether they're loaded, whether Joe is enraged, and the war status.
+- `/seancraft summon joe|sean` (op): replaces Joe or Sean with a fresh one in front of you. Handy for testing a fight: summon both.
+- `/seancraft babywars start|stop` (op): start the Baby Wars at your position, or call them off.
+- `/seancraft reload` (op): reload the config and `joe_lines.txt`.
 
 ## What changed from the Valheim version
 
@@ -283,7 +305,7 @@ Sean's lines about selling weather charms now pitch his actual stock. Joe's line
 
 | File | Role |
 |---|---|
-| `GoblinCraft.java` | Entry point. Loads config and lines; hooks server ticks, chat (rage phrases), cauldron use, camp-block protection and commands. |
+| `SeanCraft.java` | Entry point. Loads config and lines; hooks server ticks, chat (rage phrases), cauldron use, camp-block protection and commands. |
 | `entity/Joe.java` | Joe's behaviour: provocation, rage, restraining order, pickpocketing, taunts, puking, level scaling, stash drop on death. |
 | `entity/Sean.java` | Sean: travelling, camping, greeting customers, trades, damage rules. |
 | `entity/Fight.java`, `entity/SpellProjectile.java` | The duel. Spells are item-rendered projectiles (lightning is instant) that burst into area damage where they land. |
@@ -314,7 +336,7 @@ Item icons reuse vanilla textures (honey bottle, crossbow, paper and so on) thro
 It builds cleanly (no compiler warnings) against Minecraft 1.21.1, Loom 1.11.8, Fabric Loader 0.16.9 and Fabric API 0.116.17+1.21.1. It's been run on a dev server and a dev client under a software-rendered virtual display. What was seen working:
 
 - **Uniqueness:** a second summoned Joe removes itself. A baby summoned with no war on removes itself.
-- **Death and respawn:** killing Joe starts the 10-minute respawn timer, and a Joe summoned during the timer removes itself. The state is saved to `data/goblincraft.dat`.
+- **Death and respawn:** killing Joe starts the 10-minute respawn timer, and a Joe summoned during the timer removes itself. The state is saved to `data/seancraft.dat`.
 - **The duel:** Joe and Sean start fighting when close. Fireballs and lightning render, damage lands, and it ends in a stalemate with both end-of-fight lines.
 - **Rendering:** Joe as a green piglin, the toddler babies, Sean in trader robes, the guards, and the war camp (cauldron on campfire, totem, banner).
 - **Speech:** Joe's taunts and puke lines, and Sean's greeting and pitch, show in chat.
@@ -325,6 +347,10 @@ It builds cleanly (no compiler warnings) against Minecraft 1.21.1, Loom 1.11.8, 
 - **Raids and hideout:** raid HUD and threat, elite strays and hunting parties, a raid death wiping the kit and keeping the pouch, the Workshop building from stash chests.
 - **Body health:** the STATUS screen, bleeds, field kit healing.
 - **Parts:** assembling a sword in a crafting grid, swapping and levelling parts at the Weapon Bench, the armor bench (diamond chestplate with netherite plates: +6% armor), tooltips showing the new stats.
+- **Grids beside vanilla screens:**
+  - Logs taken from pockets into the 3x3 crafting grid, crafted, and the planks shift-clicked out.
+  - Planks carried from the hotbar onto a pocket cell, with nothing duplicated after closing the screen.
+  - The CRAFTING GRID button opening the 3x3 grid in the hideout.
 - **Tetris inventory:**
   - E opens the screen; pickups fill pockets, then the backpack.
   - The old secure container's contents moved into the pouch.
@@ -338,4 +364,4 @@ It builds cleanly (no compiler warnings) against Minecraft 1.21.1, Loom 1.11.8, 
 
 Not exercised yet: pickpocketing and the stash drop, the Restraining Order, rage from chat, the Glock, Soda and Diddy Oil, and the stranded-NPC relocation. These need a real player wandering around for a while. Treat a first real session as a test of those.
 
-On start-up the log shows `No data fixer registered for goblincraft:...` once per entity. That's Minecraft noting that modded entities have no data-fixer schema. It's harmless and common to Fabric mods.
+On start-up the log shows `No data fixer registered for seancraft:...` once per entity. That's Minecraft noting that modded entities have no data-fixer schema. It's harmless and common to Fabric mods.

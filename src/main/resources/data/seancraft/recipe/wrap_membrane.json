@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "pattern": [
+    "HH"
+  ],
+  "key": {
+    "H": {
+      "item": "minecraft:phantom_membrane"
+    }
+  },
+  "result": {
+    "id": "seancraft:wrap_membrane",
+    "count": 1
+  }
+}
