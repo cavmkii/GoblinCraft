@@ -16,13 +16,14 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * Weapon Bench: put a weapon or armor piece in the left slot and its parts appear in the slots beside it. Take a
- * part out to remove it, put one in to fit it. The arrow buttons level a part up with its own material.
+ * Weapon Bench. Modify: put a weapon or armor piece in the left slot and its parts appear in the slots beside it;
+ * take a part out to remove it, put one in to fit it. Build: with the left slot empty, pick what to make, fill its
+ * labelled part slots, and ASSEMBLE. The arrow buttons level a part up with its own material.
  */
 public class WeaponBenchMenu extends AbstractContainerMenu {
     public static final int PARTS = 4;
     public static final int ITEM_X = 20;
-    public static final int ITEM_Y = 40;
+    public static final int ITEM_Y = 24;
     public static final int PART_X = 62;
     public static final int PART_Y = 18;
 
@@ -31,6 +32,14 @@ public class WeaponBenchMenu extends AbstractContainerMenu {
     private final SimpleContainer parts = new SimpleContainer(PARTS);
     private final boolean server;
     private boolean loading;
+    /** Family picked to build, as an index into {@link #BUILDABLE}, or -1. Synced to the client. */
+    private final net.minecraft.world.inventory.DataSlot building = net.minecraft.world.inventory.DataSlot.standalone();
+
+    /** What the bench can build from scratch. Bows keep their vanilla recipe. */
+    public static final Family[] BUILDABLE = {Family.SWORD, Family.AXE, Family.CROSSBOW, Family.SHIELD,
+            Family.HELMET, Family.CHEST, Family.LEGS, Family.BOOTS};
+    public static final int ASSEMBLE_BUTTON = 200;
+    public static final int PICK_BUTTON = 100;
 
     public WeaponBenchMenu(int id, Inventory inventory) {
         this(id, inventory, ContainerLevelAccess.NULL);
@@ -43,7 +52,8 @@ public class WeaponBenchMenu extends AbstractContainerMenu {
         addSlot(new Slot(item, 0, ITEM_X, ITEM_Y) {
             @Override
             public boolean mayPlace(ItemStack stack) {
-                return Parts.modular(stack);
+                // Not while loose parts for a build sit in the part slots: they'd be replaced by the item's own.
+                return Parts.modular(stack) && parts.isEmpty();
             }
 
             @Override
@@ -69,20 +79,83 @@ public class WeaponBenchMenu extends AbstractContainerMenu {
 
                 @Override
                 public int getMaxStackSize() {
-                    return 1;
+                    return weapon().isEmpty() && slotFor(partIndex) == PartSlot.PLATE ? platesFor(family()) : 1;
+                }
+
+                @Override
+                public int getMaxStackSize(ItemStack stack) {
+                    return getMaxStackSize();
                 }
             });
         }
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 9; col++) {
-                addSlot(new Slot(inventory, 9 + row * 9 + col, 8 + col * 18, 108 + row * 18));
+                addSlot(new Slot(inventory, 9 + row * 9 + col, 8 + col * 18, 130 + row * 18));
             }
         }
         for (int col = 0; col < 9; col++) {
-            addSlot(new Slot(inventory, col, 8 + col * 18, 166));
+            addSlot(new Slot(inventory, col, 8 + col * 18, 188));
         }
         item.addListener(c -> loadParts());
         parts.addListener(c -> saveParts());
+        building.set(-1);
+        addDataSlot(building);
+    }
+
+    public static int platesFor(Family family) {
+        return switch (family) {
+            case HELMET -> 2;
+            case CHEST -> 4;
+            case LEGS -> 3;
+            case BOOTS -> 1;
+            default -> 1;
+        };
+    }
+
+    public boolean buildMode() {
+        return weapon().isEmpty();
+    }
+
+    public int buildingIndex() {
+        return building.get();
+    }
+
+    /** What ASSEMBLE would make from the loose parts, or empty. Works on both sides, for the preview. */
+    public ItemStack assemblyResult() {
+        Family family = family();
+        if (!buildMode() || family == null) {
+            return ItemStack.EMPTY;
+        }
+        Map<PartSlot, Parts.Installed> map = new EnumMap<>(PartSlot.class);
+        int metal = -1;
+        for (int i = 0; i < family.slots.size(); i++) {
+            PartSlot slot = family.slots.get(i);
+            ItemStack stack = parts.getItem(i);
+            if (!(stack.getItem() instanceof PartItem part)) {
+                return ItemStack.EMPTY;
+            }
+            if (slot == PartSlot.PLATE && stack.getCount() < platesFor(family)) {
+                return ItemStack.EMPTY;
+            }
+            if (slot == PartSlot.HEAD || slot == PartSlot.PLATE || (slot == PartSlot.GUARD && family == Family.SWORD)) {
+                if (metal >= 0 && metal != part.def.tier()) {
+                    return ItemStack.EMPTY; // blade and guard must be the same metal
+                }
+                metal = part.def.tier();
+            }
+            map.put(slot, new Parts.Installed(part.def, Parts.level(stack)));
+        }
+        net.minecraft.world.item.Item result = switch (family) {
+            case CROSSBOW -> net.minecraft.world.item.Items.CROSSBOW;
+            case SHIELD -> net.minecraft.world.item.Items.SHIELD;
+            default -> Family.itemFor(family, metal);
+        };
+        if (result == null) {
+            return ItemStack.EMPTY; // e.g. copper has no sword
+        }
+        ItemStack out = new ItemStack(result);
+        Parts.setInstalled(out, map);
+        return out;
     }
 
     public ItemStack weapon() {
@@ -90,6 +163,10 @@ public class WeaponBenchMenu extends AbstractContainerMenu {
     }
 
     public Family family() {
+        if (weapon().isEmpty()) {
+            int b = building.get();
+            return b >= 0 && b < BUILDABLE.length ? BUILDABLE[b] : null;
+        }
         Family.Stock stock = Family.stock(weapon());
         return stock != null ? stock.family() : null;
     }
@@ -136,9 +213,31 @@ public class WeaponBenchMenu extends AbstractContainerMenu {
         Parts.setInstalled(weapon(), map);
     }
 
-    /** Button i levels up the part in slot i. */
+    /** Button i levels up the part in slot i; PICK_BUTTON + n picks what to build; ASSEMBLE_BUTTON builds it. */
     @Override
     public boolean clickMenuButton(Player player, int id) {
+        if (id >= PICK_BUTTON && id < PICK_BUTTON + BUILDABLE.length && buildMode()) {
+            if (building.get() != id - PICK_BUTTON) {
+                clearContainer(player, parts); // hand back parts meant for something else
+                building.set(id - PICK_BUTTON);
+            }
+            return true;
+        }
+        if (id == ASSEMBLE_BUTTON) {
+            ItemStack result = assemblyResult();
+            if (result.isEmpty()) {
+                return false;
+            }
+            loading = true;
+            for (int i = 0; i < PARTS; i++) {
+                parts.setItem(i, ItemStack.EMPTY);
+            }
+            loading = false;
+            item.setItem(0, result);
+            player.level().playSound(null, player.blockPosition(), net.minecraft.sounds.SoundEvents.SMITHING_TABLE_USE,
+                    net.minecraft.sounds.SoundSource.BLOCKS, 0.8f, 1f);
+            return true;
+        }
         if (id < 0 || id >= PARTS || !(player instanceof ServerPlayer serverPlayer)) {
             return false;
         }
@@ -193,6 +292,11 @@ public class WeaponBenchMenu extends AbstractContainerMenu {
     @Override
     public void removed(Player player) {
         super.removed(player);
+        if (buildMode()) {
+            // Loose parts for a build that wasn't assembled go back to the player.
+            clearContainer(player, parts);
+            return;
+        }
         // The parts live inside the item; only the item itself goes back to the player.
         loading = true;
         for (int i = 0; i < PARTS; i++) {

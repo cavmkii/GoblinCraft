@@ -111,7 +111,7 @@ public final class TetrisNet {
         @Override public Type<Sync> type() { return TYPE; }
     }
 
-    /** Server to client: open the Tarkov screen on a tab; -1 opens the vanilla inventory (2x2 crafting). */
+    /** Server to client: open the Tarkov screen on a tab. */
     public record Open(int tab) implements CustomPacketPayload {
         public static final Type<Open> TYPE = payloadType("inv_open");
         public static final StreamCodec<RegistryFriendlyByteBuf, Open> CODEC =
@@ -155,7 +155,7 @@ public final class TetrisNet {
 
     /**
      * Client to server: buttons. 0 sort, 1 transfer all to stash, 2 drop all unsorted, 3 close container,
-     * 4 screen opened, 5 screen closed, 6 open a crafting grid.
+     * 4 screen opened, 5 screen closed.
      */
     public record Action(int action) implements CustomPacketPayload {
         public static final Type<Action> TYPE = payloadType("inv_action");
@@ -166,8 +166,13 @@ public final class TetrisNet {
 
     public record CraftEntry(String id, ItemStack result, int times) {}
 
-    /** Server to client: recipes you can make now from everything you carry (and the stash). */
-    public record CraftList(List<CraftEntry> entries) implements CustomPacketPayload {
+    /**
+     * Server to client: the CRAFTING tab. Recipes you can make now (the Hideout Bench first when you're outside a
+     * hideout), the grid's nine cells and what they make (or that it needs a crafting table), the merged materials
+     * you can draw on, whether you're in a hideout, and whether a crafting table is in reach.
+     */
+    public record CraftList(List<CraftEntry> entries, List<ItemStack> grid, ItemStack result, boolean needsTable,
+            List<ItemStack> materials, boolean inHideout, boolean table) implements CustomPacketPayload {
         public static final Type<CraftList> TYPE = payloadType("craft_list");
         public static final StreamCodec<RegistryFriendlyByteBuf, CraftList> CODEC = StreamCodec.of((buf, p) -> {
             buf.writeVarInt(p.entries.size());
@@ -176,18 +181,38 @@ public final class TetrisNet {
                 ItemStack.STREAM_CODEC.encode(buf, e.result);
                 buf.writeVarInt(e.times);
             }
+            for (int i = 0; i < 9; i++) {
+                ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, p.grid.get(i));
+            }
+            ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, p.result);
+            buf.writeBoolean(p.needsTable);
+            buf.writeVarInt(p.materials.size());
+            p.materials.forEach(m -> ItemStack.STREAM_CODEC.encode(buf, m));
+            buf.writeBoolean(p.inHideout);
+            buf.writeBoolean(p.table);
         }, buf -> {
             int n = buf.readVarInt();
             List<CraftEntry> list = new ArrayList<>();
             for (int i = 0; i < n; i++) {
                 list.add(new CraftEntry(buf.readUtf(), ItemStack.STREAM_CODEC.decode(buf), buf.readVarInt()));
             }
-            return new CraftList(list);
+            List<ItemStack> grid = new ArrayList<>();
+            for (int i = 0; i < 9; i++) {
+                grid.add(ItemStack.OPTIONAL_STREAM_CODEC.decode(buf));
+            }
+            ItemStack result = ItemStack.OPTIONAL_STREAM_CODEC.decode(buf);
+            boolean needsTable = buf.readBoolean();
+            int m = buf.readVarInt();
+            List<ItemStack> materials = new ArrayList<>();
+            for (int i = 0; i < m; i++) {
+                materials.add(ItemStack.STREAM_CODEC.decode(buf));
+            }
+            return new CraftList(list, grid, result, needsTable, materials, buf.readBoolean(), buf.readBoolean());
         });
         @Override public Type<CraftList> type() { return TYPE; }
     }
 
-    /** Client to server: craft a recipe (empty id: just refresh the list). */
+    /** Client to server: "" refresh, "#grid" craft from the grid (times), "#clear" empty the grid, or a recipe id to lay out. */
     public record Craft(String id, int times) implements CustomPacketPayload {
         public static final Type<Craft> TYPE = payloadType("craft");
         public static final StreamCodec<RegistryFriendlyByteBuf, Craft> CODEC =

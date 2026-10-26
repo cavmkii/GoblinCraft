@@ -97,6 +97,8 @@ public final class Tetris {
         BlockPos container;
         boolean dirty = true;
         int hash;
+        final net.minecraft.core.NonNullList<ItemStack> craft = net.minecraft.core.NonNullList.withSize(9, ItemStack.EMPTY);
+        String lastRecipe;
     }
 
     private static final Map<UUID, Runtime> RUNTIME = new HashMap<>();
@@ -107,7 +109,7 @@ public final class Tetris {
         return player.level().isClientSide ? clientView : player.getAttachedOrCreate(DATA);
     }
 
-    private static Runtime rt(ServerPlayer player) {
+    static Runtime rt(ServerPlayer player) {
         return RUNTIME.computeIfAbsent(player.getUUID(), id -> new Runtime());
     }
 
@@ -127,7 +129,12 @@ public final class Tetris {
         ContainerGrid.init();
         ServerTickEvents.END_SERVER_TICK.register(Tetris::tick);
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> rt(handler.player).dirty = true);
-        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> RUNTIME.remove(handler.player.getUUID()));
+        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
+            if (RUNTIME.containsKey(handler.player.getUUID())) {
+                CraftGrid.returnAll(handler.player);
+            }
+            RUNTIME.remove(handler.player.getUUID());
+        });
         net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) -> {
             Runtime rt = rt(newPlayer);
             rt.dirty = true;
@@ -138,6 +145,13 @@ public final class Tetris {
                 return InteractionResult.PASS;
             }
             BlockState state = level.getBlockState(hit.getBlockPos());
+            if (state.is(Blocks.CRAFTING_TABLE)) {
+                if (player instanceof ServerPlayer sp) {
+                    sendCraftList(sp);
+                    ServerPlayNetworking.send(sp, new TetrisNet.Open(1));
+                }
+                return InteractionResult.SUCCESS;
+            }
             if (!(state.getBlock() instanceof ChestBlock) && !(state.getBlock() instanceof BarrelBlock)) {
                 return InteractionResult.PASS;
             }
@@ -150,6 +164,11 @@ public final class Tetris {
         ServerPlayNetworking.registerGlobalReceiver(TetrisNet.Move.TYPE, (p, ctx) -> {
             move(ctx.player(), p.from(), p.to(), p.rotated(), p.count());
             sync(ctx.player());
+            if (p.from().kind() == Loc.CRAFT || p.from().kind() == Loc.MATERIAL || p.to().kind() == Loc.CRAFT || p.to().kind() == Loc.MATERIAL) {
+                // Changed by hand: "craft all" no longer refills with the last laid-out recipe.
+                rt(ctx.player()).lastRecipe = null;
+                sendCraftList(ctx.player());
+            }
         });
         ServerPlayNetworking.registerGlobalReceiver(TetrisNet.QuickMove.TYPE, (p, ctx) -> {
             quickMove(ctx.player(), p.from());
@@ -163,12 +182,25 @@ public final class Tetris {
             panelClick(ctx.player(), p.loc(), p.rotated(), p.button());
             sync(ctx.player());
         });
+        // "" refreshes; "#grid" crafts from the grid (times); "#clear" empties the grid; a recipe id lays it out.
         ServerPlayNetworking.registerGlobalReceiver(TetrisNet.Craft.TYPE, (p, ctx) -> {
-            if (!p.id().isEmpty()) {
-                craft(ctx.player(), p.id(), p.times());
-                sync(ctx.player());
+            ServerPlayer player = ctx.player();
+            if (active(player) && player.isAlive()) {
+                switch (p.id()) {
+                    case "" -> { }
+                    case "#grid" -> CraftGrid.craft(player, p.times());
+                    case "#clear" -> {
+                        CraftGrid.returnAll(player);
+                        rt(player).lastRecipe = null;
+                    }
+                    default -> CraftGrid.fill(player, p.id(), true);
+                }
+                if (!p.id().isEmpty()) {
+                    purge(data(player));
+                    sync(player);
+                }
             }
-            ServerPlayNetworking.send(ctx.player(), new TetrisNet.CraftList(craftable(ctx.player())));
+            sendCraftList(player);
         });
     }
 
@@ -608,6 +640,16 @@ public final class Tetris {
                     }
                 };
             }
+            case Loc.CRAFT -> {
+                if (loc.a() < 0 || loc.a() >= 9) {
+                    return null;
+                }
+                var cells = rt(player).craft;
+                return new Ref() {
+                    public ItemStack get() { return cells.get(loc.a()); }
+                    public void set(ItemStack s) { cells.set(loc.a(), s); }
+                };
+            }
             case Loc.UNSORTED -> {
                 if (loc.a() < 0 || loc.a() >= data.unsorted.size()) {
                     return null;
@@ -714,7 +756,12 @@ public final class Tetris {
                 g.container.setChanged();
                 return stack;
             }
-            case Loc.HAND, Loc.EQUIP -> {
+            case Loc.MATERIAL -> {
+                // Back to your inventory.
+                pickup(player, stack);
+                return stack;
+            }
+            case Loc.CRAFT, Loc.HAND, Loc.EQUIP -> {
                 Container container = null;
                 if (!accepts(player, to, stack)) {
                     return stack;
@@ -747,7 +794,7 @@ public final class Tetris {
     }
 
     private static boolean slotKind(Loc loc) {
-        return loc.kind() == Loc.HAND || (loc.kind() == Loc.EQUIP && loc.a() != 4 && loc.a() != 5);
+        return loc.kind() == Loc.HAND || loc.kind() == Loc.CRAFT || (loc.kind() == Loc.EQUIP && loc.a() != 4 && loc.a() != 5);
     }
 
     static void move(ServerPlayer player, Loc from, Loc to, boolean rotated, int count) {
@@ -755,6 +802,19 @@ public final class Tetris {
             return;
         }
         InvData data = data(player);
+        if (from.kind() == Loc.MATERIAL) {
+            // Taken from wherever you have it (hotbar, grids, stash); what doesn't land goes back.
+            ItemStack moving = CraftGrid.takeMaterial(player, from.a(), count);
+            if (!moving.isEmpty()) {
+                ItemStack left = insert(player, data, to, moving, rotated, null);
+                if (!left.isEmpty()) {
+                    give(player, left);
+                }
+                purge(data);
+            }
+            rt(player).dirty = true;
+            return;
+        }
         Ref src = ref(player, data, from);
         if (src == null || src.get().isEmpty()) {
             return;
@@ -815,6 +875,12 @@ public final class Tetris {
             return;
         }
         ItemStack stack = src.get().copy();
+        if (from.kind() == Loc.CRAFT) {
+            give(player, stack);
+            src.set(ItemStack.EMPTY);
+            rt(player).dirty = true;
+            return;
+        }
         if (from.kind() == Loc.CONTAINER) {
             storeInGrids(player, data, stack);
             if (!stack.isEmpty()) {
@@ -893,6 +959,7 @@ public final class Tetris {
             case 4 -> rt.open = true;
             case 5 -> {
                 rt.open = false;
+                CraftGrid.returnAll(player);
                 if (rt.container != null) {
                     BlockState state = player.level().getBlockState(rt.container);
                     player.level().playSound(null, rt.container, state.getBlock() instanceof BarrelBlock ? SoundEvents.BARREL_CLOSE
@@ -900,29 +967,9 @@ public final class Tetris {
                 }
                 rt.container = null;
             }
-            case 6 -> openCraftingGrid(player);
             default -> { }
         }
         rt.dirty = true;
-    }
-
-    /**
-     * A real crafting grid: 3x3 near a crafting table or in the hideout, else the vanilla 2x2 inventory screen.
-     * Either way the grid panel shows beside it.
-     */
-    private static void openCraftingGrid(ServerPlayer player) {
-        if (!nearTable(player)) {
-            ServerPlayNetworking.send(player, new TetrisNet.Open(-1));
-            return;
-        }
-        player.openMenu(new net.minecraft.world.SimpleMenuProvider((id, inventory, p) ->
-                new net.minecraft.world.inventory.CraftingMenu(id, inventory,
-                        net.minecraft.world.inventory.ContainerLevelAccess.create(player.level(), player.blockPosition())) {
-                    @Override
-                    public boolean stillValid(Player who) {
-                        return who.isAlive();
-                    }
-                }, Component.translatable("container.crafting")));
     }
 
     // ================================================================== grid panel beside vanilla screens
@@ -1004,6 +1051,10 @@ public final class Tetris {
         data.unsorted.clear();
         lost.add(data.rig);
         lost.add(data.backpack);
+        for (int i = 0; i < 9; i++) {
+            lost.add(rt(player).craft.get(i));
+            rt(player).craft.set(i, ItemStack.EMPTY);
+        }
         data.rig = ItemStack.EMPTY;
         data.backpack = ItemStack.EMPTY;
         if (pouchToo) {
@@ -1022,7 +1073,7 @@ public final class Tetris {
 
     // ================================================================== crafting
 
-    private static boolean nearTable(ServerPlayer player) {
+    static boolean nearTable(ServerPlayer player) {
         if (Hideouts.at(player.serverLevel(), player.position()) != null) {
             return true;
         }
@@ -1036,7 +1087,7 @@ public final class Tetris {
     }
 
     /** What crafting may draw from: hotbar, grids, and the stash when home. */
-    private static List<ItemStack> pool(ServerPlayer player, List<Container> touched) {
+    static List<ItemStack> pool(ServerPlayer player, List<Container> touched) {
         List<ItemStack> out = new ArrayList<>();
         Inventory inv = player.getInventory();
         for (int i = 0; i < Inventory.getSelectionSize(); i++) {
@@ -1097,6 +1148,14 @@ public final class Tetris {
         return take;
     }
 
+    static void sendCraftList(ServerPlayer player) {
+        CraftGrid.Preview preview = CraftGrid.preview(player);
+        List<ItemStack> grid = new ArrayList<>();
+        rt(player).craft.forEach(s -> grid.add(s.copy()));
+        ServerPlayNetworking.send(player, new TetrisNet.CraftList(craftable(player), grid, preview.result().copy(), preview.needsTable(),
+                CraftGrid.materials(player), Hideouts.at(player.serverLevel(), player.position()) != null, nearTable(player)));
+    }
+
     static List<TetrisNet.CraftEntry> craftable(ServerPlayer player) {
         List<TetrisNet.CraftEntry> out = new ArrayList<>();
         if (!active(player)) {
@@ -1125,6 +1184,26 @@ public final class Tetris {
             }
         }
         out.sort((a, b) -> a.result().getHoverName().getString().compareToIgnoreCase(b.result().getHoverName().getString()));
+        if (Hideouts.at(player.serverLevel(), player.position()) == null) {
+            // No hideout here: put the Hideout Bench first, even before you have the materials.
+            String id = com.cavmkii.seancraft.SeanCraft.id("hideout_bench").toString();
+            TetrisNet.CraftEntry bench = null;
+            for (TetrisNet.CraftEntry e : out) {
+                if (e.id().equals(id)) {
+                    bench = e;
+                }
+            }
+            if (bench != null) {
+                out.remove(bench);
+            } else {
+                // Not craftable here; -1 means you have the materials but need a crafting table.
+                var holder = player.server.getRecipeManager().byKey(ResourceLocation.parse(id)).orElse(null);
+                boolean have = holder != null && holder.value() instanceof CraftingRecipe r
+                        && match(r, pool(player, new ArrayList<>()), new IdentityHashMap<>()) != null;
+                bench = new TetrisNet.CraftEntry(id, new ItemStack(com.cavmkii.seancraft.tarkov.TarkovContent.HIDEOUT_BENCH_ITEM), have ? -1 : 0);
+            }
+            out.add(0, bench);
+        }
         return out;
     }
 
@@ -1173,7 +1252,7 @@ public final class Tetris {
         rt(player).dirty = true;
     }
 
-    private static void give(ServerPlayer player, ItemStack stack) {
+    static void give(ServerPlayer player, ItemStack stack) {
         pickup(player, stack);
         if (!stack.isEmpty()) {
             InvData data = data(player);

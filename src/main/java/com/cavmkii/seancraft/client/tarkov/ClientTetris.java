@@ -17,7 +17,8 @@ import net.minecraft.world.item.ItemStack;
 public final class ClientTetris {
     public static TetrisNet.Sync sync = new TetrisNet.Sync(ItemStack.EMPTY, ItemStack.EMPTY, List.of(), List.of(), List.of(), List.of(),
             2, 2, List.of(), false, List.of());
-    public static List<TetrisNet.CraftEntry> crafts = List.of();
+    public static TetrisNet.CraftList craft = new TetrisNet.CraftList(List.of(), java.util.Collections.nCopies(9, ItemStack.EMPTY),
+            ItemStack.EMPTY, false, List.of(), true, false);
 
     private ClientTetris() {}
 
@@ -34,12 +35,10 @@ public final class ClientTetris {
             view.unsorted.addAll(payload.unsorted());
             Tetris.clientView = view;
         });
-        ClientPlayNetworking.registerGlobalReceiver(TetrisNet.CraftList.TYPE, (payload, ctx) -> crafts = payload.entries());
+        ClientPlayNetworking.registerGlobalReceiver(TetrisNet.CraftList.TYPE, (payload, ctx) -> craft = payload);
         ClientPlayNetworking.registerGlobalReceiver(TetrisNet.Open.TYPE, (payload, ctx) -> {
             Minecraft mc = ctx.client();
-            if (payload.tab() < 0) {
-                mc.setScreen(new net.minecraft.client.gui.screens.inventory.InventoryScreen(mc.player));
-            } else if (mc.screen instanceof TarkovScreen screen) {
+            if (mc.screen instanceof TarkovScreen screen) {
                 screen.setTab(payload.tab());
             } else if (mc.screen == null) {
                 mc.setScreen(new TarkovScreen(payload.tab()));
