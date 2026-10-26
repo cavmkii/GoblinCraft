@@ -16,6 +16,19 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.component.DyedItemColor;
 
 public final class GoblinCraftClient implements ClientModInitializer {
+    private static String partEffects(com.cavmkii.goblincraft.parts.PartDef def, int level) {
+        java.util.List<String> parts = new java.util.ArrayList<>();
+        if (def.damage(level) != 0) parts.add(String.format("+%.0f%% damage", def.damage(level) * 100));
+        if (def.armor(level) != 0) parts.add(String.format("+%.0f%% armor", def.armor(level) * 100));
+        if (def.stamina(level) != 0) parts.add(String.format("+%.0f%% swing speed", -def.stamina(level) * 100));
+        if (def.durability(level) != 0) parts.add(String.format("+%.0f%% durability", def.durability(level) * 100));
+        if (def.block(level) != 0) parts.add(String.format("+%.0f%% block", def.block(level) * 100));
+        if (def.spirit(level) != 0) parts.add(String.format("+%.0f%% vs undead", def.spirit(level) * 100));
+        if (def.fire(level) != 0) parts.add("sets targets alight");
+        if (def.weight(level) != 0) parts.add("lighter armor");
+        return String.join(", ", parts) + " (vs. no part)";
+    }
+
     private static final int JOE_GREEN = 0xFF8FD46A;
     private static final int BABY_GREEN = 0xFFB4E68C;
 
@@ -32,6 +45,27 @@ public final class GoblinCraftClient implements ClientModInitializer {
         EntityRendererRegistry.register(RpgContent.SKILL_PROJECTILE, ctx -> new ThrownItemRenderer<>(ctx, 1.25f, true));
         ClientRpg.init();
         ClientTarkov.init();
+        net.minecraft.client.gui.screens.MenuScreens.register(com.cavmkii.goblincraft.parts.PartItems.BENCH_MENU,
+                com.cavmkii.goblincraft.client.parts.WeaponBenchScreen::new);
+        ItemTooltipCallback.EVENT.register((stack, context, type, lines) -> {
+            if (stack.getItem() instanceof com.cavmkii.goblincraft.parts.PartItem part) {
+                lines.add(1, Component.literal("Level " + com.cavmkii.goblincraft.parts.Parts.level(stack) + "/4  -  "
+                        + part.def.kind().label + ", tier " + part.def.tier()).withStyle(ChatFormatting.GOLD));
+                lines.add(2, Component.literal(partEffects(part.def, com.cavmkii.goblincraft.parts.Parts.level(stack))).withStyle(ChatFormatting.GRAY));
+            } else if (com.cavmkii.goblincraft.parts.Parts.modular(stack)) {
+                com.cavmkii.goblincraft.parts.Family family = com.cavmkii.goblincraft.parts.Family.stock(stack).family();
+                int line = 1;
+                for (var e : com.cavmkii.goblincraft.parts.Parts.installed(stack).entrySet()) {
+                    lines.add(line++, Component.literal(family.slotName(e.getKey()) + ": " + e.getValue().part().label() + " L" + e.getValue().level())
+                            .withStyle(ChatFormatting.DARK_AQUA));
+                }
+                for (var slot : family.slots) {
+                    if (!com.cavmkii.goblincraft.parts.Parts.installed(stack).containsKey(slot)) {
+                        lines.add(line++, Component.literal(family.slotName(slot) + ": missing").withStyle(ChatFormatting.RED));
+                    }
+                }
+            }
+        });
 
         // Merch and the bonnet are dyed leather; tint the base layer of their icons.
         ColorProviderRegistry.ITEM.register((stack, tintIndex) -> tintIndex > 0 ? -1 : DyedItemColor.getOrDefault(stack, -1),

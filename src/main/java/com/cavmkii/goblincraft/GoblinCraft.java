@@ -37,6 +37,7 @@ public final class GoblinCraft implements ModInitializer {
         ModItems.init();
         ModEntities.init();
         Rpg.init();
+        com.cavmkii.goblincraft.parts.PartItems.init();
         Tarkov.init();
 
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {

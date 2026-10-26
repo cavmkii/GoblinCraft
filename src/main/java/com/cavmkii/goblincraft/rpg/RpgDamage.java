@@ -18,6 +18,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.projectile.AbstractArrow;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
+import com.cavmkii.goblincraft.parts.Parts;
 
 /**
  * Damage rules for characters: weapon skills, node stats, crits, backstab, lifesteal, rage, blocking,
@@ -84,10 +85,14 @@ public final class RpgDamage {
             PlayerData data = Rpg.data(attacker);
             if (source.is(DamageTypes.PLAYER_ATTACK) && source.getDirectEntity() == attacker) {
                 amount = melee(attacker, victim, data, stats, amount);
-            } else if (source.getDirectEntity() instanceof AbstractArrow) {
+            } else if (source.getDirectEntity() instanceof AbstractArrow arrow) {
                 int bows = data.skillLevel(Skill.BOWS);
                 amount = (float) ((amount + stats.primaryDamage())
                         * (1 + Skill.BOWS.effectValue(bows) / 100.0 + stats.get(Stat.PROJECTILE_DAMAGE) / 100));
+                ItemStack bow = arrow.getWeaponItem();
+                if (bow != null && Parts.modular(bow)) {
+                    amount *= Math.max(0.05f, 1 + Parts.totals(bow).damage);
+                }
                 Rpg.addSkillXp(attacker, Skill.BOWS, Math.min(amount, 15) * 0.5);
             }
         }
@@ -114,6 +119,17 @@ public final class RpgDamage {
         }
         amount *= (float) mult;
 
+        // Weapon parts: gold heads hurt undead more, netherite heads set things alight.
+        if (Parts.modular(weapon)) {
+            Parts.Totals parts = Parts.totals(weapon);
+            if (parts.spirit > 0 && victim.getType().is(net.minecraft.tags.EntityTypeTags.UNDEAD)) {
+                amount *= 1 + parts.spirit;
+            }
+            if (parts.fire > 0) {
+                victim.igniteForSeconds(parts.fire * 40);
+            }
+        }
+
         if (weaponSkill != null) {
             Rpg.addSkillXp(attacker, weaponSkill, Math.min(amount, 15) * 0.5);
         }
@@ -136,6 +152,11 @@ public final class RpgDamage {
                 int blocking = data.skillLevel(Skill.BLOCKING);
                 Rpg.addSkillXp(player, Skill.BLOCKING, 1 + Math.min(amount, 15) * 2);
                 float reflect = amount * Skill.BLOCKING.effectValue(blocking) / 100f;
+                ItemStack shield = player.getUseItem();
+                if (Parts.modular(shield)) {
+                    // Better shield rims and straps than standard add to what is thrown back.
+                    reflect += amount * Math.max(0, Parts.totals(shield).block);
+                }
                 if (reflect > 0 && source.getDirectEntity() == attacker) {
                     attacker.hurt(player.damageSources().thorns(player), reflect);
                 }

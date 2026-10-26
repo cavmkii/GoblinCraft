@@ -70,6 +70,8 @@ public final class ModItems {
                         output.accept(com.cavmkii.goblincraft.tarkov.TarkovContent.SECURE_GAMMA);
                         output.accept(com.cavmkii.goblincraft.tarkov.TarkovContent.SECURE_KAPPA);
                         com.cavmkii.goblincraft.tarkov.TarkovContent.MEDS.values().forEach(output::accept);
+                        output.accept(com.cavmkii.goblincraft.parts.PartItems.WEAPON_BENCH_ITEM);
+                        com.cavmkii.goblincraft.parts.PartItems.ITEMS.values().forEach(output::accept);
                     })
                     .build());
 
