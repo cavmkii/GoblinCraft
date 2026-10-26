@@ -30,19 +30,21 @@ public final class TarkovNet {
 
     /**
      * One cost on the Hideout screen. For a recipe, {@code have} is what you and the stash hold. For a module,
-     * {@code have} is what's been contributed so far and {@code carry} what you could still put in.
+     * {@code have} is what's been contributed so far and {@code carry} what you could still put in. {@code track} is
+     * what the gather list follows: an item id, or {@code #tag} for things like any planks.
      */
-    public record CostLine(String label, String icon, int have, int need, int carry) {
+    public record CostLine(String label, String icon, int have, int need, int carry, String track) {
         void write(FriendlyByteBuf buf) {
             buf.writeUtf(label);
             buf.writeUtf(icon);
             buf.writeVarInt(have);
             buf.writeVarInt(need);
             buf.writeVarInt(carry);
+            buf.writeUtf(track);
         }
 
         static CostLine read(FriendlyByteBuf buf) {
-            return new CostLine(buf.readUtf(), buf.readUtf(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt());
+            return new CostLine(buf.readUtf(), buf.readUtf(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readUtf());
         }
     }
 

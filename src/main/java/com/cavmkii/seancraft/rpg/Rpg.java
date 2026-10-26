@@ -291,7 +291,8 @@ public final class Rpg {
             ActiveSkill skill = data.slot(s);
             if (skill != null) {
                 cooldowns[s] = (int) Math.max(0, rt.cooldownEnd.getOrDefault(skill, 0L) - now);
-                totals[s] = (int) Math.round(skill.cooldownTicks * rt.stats.cooldownMultiplier(data.skillLevel(Skill.CASTING)));
+                // stats(), not rt.stats: a level-up earlier this tick (markDirty) may have cleared the cache.
+                totals[s] = (int) Math.round(skill.cooldownTicks * stats(player).cooldownMultiplier(data.skillLevel(Skill.CASTING)));
             }
         }
         ServerPlayNetworking.send(player, new RpgNet.Resources(data.mana, data.rage, data.stamina, cooldowns, totals));

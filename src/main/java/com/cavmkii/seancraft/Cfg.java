@@ -97,6 +97,7 @@ public final class Cfg {
     public static boolean huntingParties = true;
     /** Raid minute each threat level (1-4) starts at. */
     public static double[] threatMinutes = {5, 20, 40, 60};
+    public static double sleepHealPercent = 50;
     public static int spawnPoints = 3;
     public static double spawnDistance = 400;
     public static double spawnRadius = 24;
@@ -171,6 +172,7 @@ public final class Cfg {
 
         s("Raid", "DeathRule", "What happens to your inventory when you die outside a hideout. VANILLA: normal drops. KEEP_SECURE: normal drops, but the secure pouch stays with you. LOSE_EVERYTHING: no drops; everything outside the secure pouch is gone.",
                 v -> raidDeathRule = DeathRule.valueOf(v.trim().toUpperCase(Locale.ROOT)), () -> raidDeathRule.name());
+        d("Raid", "SleepHealPercent", "Sleeping through the night heals each body part that isn't destroyed by this percent of its health.", v -> sleepHealPercent = v, () -> sleepHealPercent);
         d("Raid", "HideoutRadius", "Radius (blocks) of a Hideout Bench's safe zone before Perimeter upgrades.", v -> hideoutRadius = v, () -> hideoutRadius);
         b("Raid", "Hostility", "Threat rises the longer you stay out: elite mobs and hunting parties.", v -> raidHostility = v, () -> raidHostility);
         b("Raid", "HuntingParties", "Send hunting parties at raiding players as threat rises.", v -> huntingParties = v, () -> huntingParties);

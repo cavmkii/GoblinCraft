@@ -357,6 +357,7 @@ public class TarkovScreen extends Screen {
                 }
             };
             g.pose().popPose();
+            hoverStack = tip;
             if (!tip.isEmpty() && held.isEmpty()) {
                 g.renderTooltip(font, tip, mouseX, mouseY);
             }
@@ -550,8 +551,11 @@ public class TarkovScreen extends Screen {
         g.enableScissor(sx0, sy0, (int) (ox + (COL4 + COL4_W) * scale) + 1, (int) (oy + H * scale));
         for (Section sec : secs) {
             int y = sec.y - (int) containerScroll;
-            String title = sec.kind == Loc.UNSORTED ? sec.title : font.plainSubstrByWidth(sec.title, COL4_W - 102);
-            g.drawString(font, title, COL4, y, sec.kind == Loc.UNSORTED ? 0xFFFF7755 : 0xFFE0C060, false);
+            if (sec.kind == Loc.UNSORTED) {
+                g.drawString(font, sec.title, COL4, y, 0xFFFF7755, false);
+            } else {
+                renderContainerTitle(g, sec, y);
+            }
             if (sec.kind == Loc.UNSORTED) {
                 List<ItemStack> list = ClientTetris.sync.unsorted();
                 for (int i = 0; i < list.size(); i++) {
@@ -599,6 +603,35 @@ public class TarkovScreen extends Screen {
             case 5 -> stack.getItem() instanceof GearItem g && g.spec.kind == com.cavmkii.seancraft.tetris.GearSpec.Kind.BACKPACK;
             default -> false;
         };
+    }
+
+    /** Container being renamed (index), and the text typed so far. */
+    private int renameIndex = -1;
+    private String renameText = "";
+    private static final int TITLE_W = COL4_W - 102;
+
+    /** Block icon, then the name (smaller, so it fits beside the buttons). Click it to rename. */
+    private void renderContainerTitle(GuiGraphics g, Section sec, int y) {
+        TetrisNet.ContainerView c = ClientTetris.sync.containers().get(sec.index);
+        g.pose().pushPose();
+        g.pose().translate(COL4, y - 1, 0);
+        g.pose().scale(0.625f, 0.625f, 1);
+        g.renderItem(c.icon(), 0, 0);
+        g.pose().popPose();
+        boolean editing = renameIndex == sec.index;
+        boolean hover = lastMx >= COL4 && lastMx < COL4 + TITLE_W && lastMy >= y - 1 && lastMy < y + 9;
+        if (editing) {
+            g.fill(COL4 + 11, y - 1, COL4 + TITLE_W, y + 8, 0xFF101014);
+            g.renderOutline(COL4 + 11, y - 1, TITLE_W - 11, 9, 0xFF55555F);
+        }
+        String text = editing ? renameText + (ticks / 6 % 2 == 0 ? "_" : "") : c.name();
+        g.pose().pushPose();
+        g.pose().translate(COL4 + 13, y + 1, 0);
+        g.pose().scale(0.75f, 0.75f, 1);
+        String fit = editing ? font.plainSubstrByWidth(text, (int) ((TITLE_W - 15) / 0.75f), true)
+                : font.plainSubstrByWidth(text, (int) ((TITLE_W - 15) / 0.75f));
+        g.drawString(font, fit, 0, 0, editing ? 0xFFFFFFFF : hover ? 0xFFFFF0A0 : 0xFFE0C060, false);
+        g.pose().popPose();
     }
 
     private int filterOpen = -1;
@@ -737,6 +770,9 @@ public class TarkovScreen extends Screen {
 
     // Layout of the CRAFTING tab: recipe list on the left, grid, result and materials on the right.
     private static final int LIST_W = 250;
+    private static final int SEARCH_X = 100;
+    /** CRAFTING sub-tab: 0 the grid, 1 the recipe book. */
+    private int craftView;
     private static final int PX = 262;
     private static final int CELL = 22;
     private static final int GRID_Y = 14;
@@ -744,6 +780,9 @@ public class TarkovScreen extends Screen {
     private static final int RESULT_Y = GRID_Y + CELL - 4;
     private static final int CLEAR_X = W - 40;
     private static final int MAT_Y = GRID_Y + 3 * CELL + 18;
+    /** The hotbar, under the materials. */
+    private static final int CRAFT_HOTBAR_Y = H - C;
+    private static final int MAT_BOTTOM = CRAFT_HOTBAR_Y - 12;
 
     private int listTop() {
         return ClientTetris.craft.inHideout() ? 20 : 58;
@@ -756,13 +795,20 @@ public class TarkovScreen extends Screen {
         return (int) ((y - GRID_Y) / CELL) * 3 + (int) ((x - PX) / CELL);
     }
 
+    private int craftHotbarAt(double x, double y) {
+        if (x < PX || x >= PX + 9 * C || y < CRAFT_HOTBAR_Y || y >= CRAFT_HOTBAR_Y + C) {
+            return -1;
+        }
+        return (int) ((x - PX) / C);
+    }
+
     private boolean overResult(double x, double y) {
         return x >= RESULT_X && x < RESULT_X + 26 && y >= RESULT_Y && y < RESULT_Y + 26;
     }
 
     private int materialAt(double x, double y) {
         int top = MAT_Y + 10 - (int) matScroll;
-        if (x < PX || x >= PX + 9 * C || y < Math.max(top, MAT_Y + 10) || y >= H) {
+        if (x < PX || x >= PX + 9 * C || y < Math.max(top, MAT_Y + 10) || y >= MAT_BOTTOM) {
             return -2;
         }
         int i = (int) ((y - top) / C) * 9 + (int) ((x - PX) / C);
@@ -771,16 +817,25 @@ public class TarkovScreen extends Screen {
 
     private ItemStack renderCrafting(GuiGraphics g, int mx, int my) {
         TetrisNet.CraftList craft = ClientTetris.craft;
-        g.fill(0, 0, 140, 14, searchFocused ? 0xFF55555F : 0xFF33333C);
-        g.fill(1, 1, 139, 13, 0xFF101014);
+        for (int v = 0; v < 2; v++) {
+            int bx = v * 48;
+            boolean active = craftView == v;
+            boolean over = mx >= bx && mx < bx + 44 && my >= 0 && my < 14;
+            g.fill(bx, 0, bx + 44, 14, active ? 0xFF3A3A44 : over ? 0xFF2A2A32 : 0xFF202026);
+            if (active) {
+                g.fill(bx, 13, bx + 44, 14, 0xFFE0C060);
+            }
+            String t = v == 0 ? "CRAFT" : "RECIPES";
+            g.drawString(font, t, bx + (44 - font.width(t)) / 2, 3, active ? 0xFFFFFFFF : 0xFF888888, false);
+        }
+        g.fill(SEARCH_X, 0, LIST_W, 14, searchFocused ? 0xFF55555F : 0xFF33333C);
+        g.fill(SEARCH_X + 1, 1, LIST_W - 1, 13, 0xFF101014);
         String shown = search.isEmpty() && !searchFocused ? "Search..." : search + (searchFocused && ticks / 6 % 2 == 0 ? "_" : "");
-        g.drawString(font, shown, 4, 3, search.isEmpty() && !searchFocused ? 0xFF666670 : 0xFFFFFFFF, false);
-        g.pose().pushPose();
-        g.pose().translate(146, 3, 0);
-        g.pose().scale(0.75f, 0.75f, 1);
-        g.drawString(font, "Click a recipe to lay it out,", 0, 0, 0xFF888890, false);
-        g.drawString(font, "or place materials yourself.", 0, 9, 0xFF888890, false);
-        g.pose().popPose();
+        g.drawString(font, font.plainSubstrByWidth(shown, LIST_W - SEARCH_X - 6, true), SEARCH_X + 4, 3,
+                search.isEmpty() && !searchFocused ? 0xFF666670 : 0xFFFFFFFF, false);
+        if (craftView == 1) {
+            return renderRecipes(g, mx, my);
+        }
         ItemStack tip = ItemStack.EMPTY;
 
         if (!craft.inHideout()) {
@@ -879,9 +934,9 @@ public class TarkovScreen extends Screen {
         // Materials.
         List<ItemStack> mats = craft.materials();
         g.drawString(font, "MATERIALS" + (craft.inHideout() ? " (incl. stash)" : ""), PX, MAT_Y, 0xFFE0C060, false);
-        double mmax = Math.max(0, ((mats.size() + 8) / 9) * C - (H - MAT_Y - 10));
+        double mmax = Math.max(0, ((mats.size() + 8) / 9) * C - (MAT_BOTTOM - MAT_Y - 10));
         matScroll = Math.max(0, Math.min(mmax, matScroll));
-        g.enableScissor((int) (ox + PX * scale), (int) (oy + (MAT_Y + 10) * scale), (int) (ox + W * scale), (int) (oy + H * scale));
+        g.enableScissor((int) (ox + PX * scale), (int) (oy + (MAT_Y + 10) * scale), (int) (ox + W * scale), (int) (oy + MAT_BOTTOM * scale));
         for (int i = 0; i < mats.size(); i++) {
             int x = PX + (i % 9) * C;
             int y = MAT_Y + 10 + (i / 9) * C - (int) matScroll;
@@ -900,6 +955,18 @@ public class TarkovScreen extends Screen {
             g.drawString(font, "Nothing to craft with.", PX, MAT_Y + 14, 0xFF666670, false);
         }
 
+        // Hotbar.
+        g.drawString(font, "HOTBAR", PX, CRAFT_HOTBAR_Y - 10, 0xFFE0C060, false);
+        for (int i = 0; i < 9; i++) {
+            int x = PX + i * C;
+            ItemStack h = minecraft.player.getInventory().items.get(i);
+            boolean over = craftHotbarAt(mx, my) == i;
+            slot(g, x, CRAFT_HOTBAR_Y, C, h, over, null);
+            if (over && !h.isEmpty()) {
+                tip = h;
+            }
+        }
+
         if (!held.isEmpty()) {
             g.pose().pushPose();
             g.pose().translate(0, 0, 300);
@@ -909,6 +976,308 @@ public class TarkovScreen extends Screen {
             g.pose().popPose();
         }
         return tip;
+    }
+
+    // ================================================================== recipe book
+
+    private ItemStack hoverStack = ItemStack.EMPTY;
+    private double recipeScroll;
+    private net.minecraft.resources.ResourceLocation selectedRecipe;
+    private List<RecipeSection> recipeCache;
+    private int recipeCacheTick = -1000;
+    private static final int RCELL = 18;
+    private static final int RCOLS = LIST_W / RCELL;
+
+    private record RecipeCell(net.minecraft.world.item.crafting.RecipeHolder<net.minecraft.world.item.crafting.CraftingRecipe> holder,
+            ItemStack result, boolean known) {}
+
+    private record RecipeSection(com.cavmkii.seancraft.tetris.StorageCategory category, List<RecipeCell> cells) {}
+
+    private record IngredientLine(net.minecraft.world.item.crafting.Ingredient ingredient, ItemStack display, int need) {}
+
+    /** Every crafting recipe by category; discovered ones (in your recipe book) first within each, by name. */
+    private List<RecipeSection> recipeSections() {
+        if (recipeCache != null && ticks - recipeCacheTick < 40) {
+            return recipeCache;
+        }
+        recipeCacheTick = ticks;
+        var registries = minecraft.level.registryAccess();
+        java.util.Map<com.cavmkii.seancraft.tetris.StorageCategory, List<RecipeCell>> map =
+                new java.util.EnumMap<>(com.cavmkii.seancraft.tetris.StorageCategory.class);
+        for (var holder : minecraft.level.getRecipeManager().getAllRecipesFor(net.minecraft.world.item.crafting.RecipeType.CRAFTING)) {
+            ItemStack result = holder.value().getResultItem(registries);
+            if (result.isEmpty()) {
+                continue;
+            }
+            boolean known = minecraft.player.getRecipeBook().contains(holder);
+            map.computeIfAbsent(com.cavmkii.seancraft.tetris.StorageCategory.of(result), k -> new ArrayList<>())
+                    .add(new RecipeCell(holder, result, known));
+        }
+        List<RecipeSection> out = new ArrayList<>();
+        map.forEach((cat, cells) -> {
+            cells.sort((a, b) -> a.known != b.known ? (a.known ? -1 : 1)
+                    : a.result.getHoverName().getString().compareToIgnoreCase(b.result.getHoverName().getString()));
+            out.add(new RecipeSection(cat, cells));
+        });
+        recipeCache = out;
+        return out;
+    }
+
+    private List<RecipeSection> visibleSections() {
+        String q = search.toLowerCase(Locale.ROOT);
+        if (q.isEmpty()) {
+            return recipeSections();
+        }
+        List<RecipeSection> out = new ArrayList<>();
+        for (RecipeSection sec : recipeSections()) {
+            List<RecipeCell> cells = new ArrayList<>();
+            for (RecipeCell c : sec.cells) {
+                if (c.known && c.result.getHoverName().getString().toLowerCase(Locale.ROOT).contains(q)) {
+                    cells.add(c);
+                }
+            }
+            if (!cells.isEmpty()) {
+                out.add(new RecipeSection(sec.category, cells));
+            }
+        }
+        return out;
+    }
+
+    private RecipeCell recipeAt(double x, double y) {
+        int top = 20 - (int) recipeScroll;
+        if (x < 0 || x >= RCOLS * RCELL || y < 20 || y >= H) {
+            return null;
+        }
+        for (RecipeSection sec : visibleSections()) {
+            int rows = (sec.cells.size() + RCOLS - 1) / RCOLS;
+            int gridTop = top + 11;
+            if (y >= gridTop && y < gridTop + rows * RCELL) {
+                int i = (int) ((y - gridTop) / RCELL) * RCOLS + (int) (x / RCELL);
+                return i < sec.cells.size() ? sec.cells.get(i) : null;
+            }
+            top = gridTop + rows * RCELL + 4;
+        }
+        return null;
+    }
+
+    /** What a recipe takes, merged: each line shows an item you have if any option matches, else the first option. */
+    private List<IngredientLine> ingredientsOf(net.minecraft.world.item.crafting.CraftingRecipe recipe) {
+        List<IngredientLine> lines = new ArrayList<>();
+        for (var ing : recipe.getIngredients()) {
+            if (ing.isEmpty()) {
+                continue;
+            }
+            boolean merged = false;
+            for (int i = 0; i < lines.size(); i++) {
+                if (lines.get(i).ingredient.equals(ing)) {
+                    lines.set(i, new IngredientLine(ing, lines.get(i).display, lines.get(i).need + 1));
+                    merged = true;
+                    break;
+                }
+            }
+            if (merged) {
+                continue;
+            }
+            ItemStack[] options = ing.getItems();
+            ItemStack display = options.length > 0 ? options[0] : ItemStack.EMPTY;
+            for (ItemStack m : ClientTetris.craft.materials()) {
+                if (ing.test(m)) {
+                    display = m.copyWithCount(1);
+                    break;
+                }
+            }
+            lines.add(new IngredientLine(ing, display, 1));
+        }
+        return lines;
+    }
+
+    private int haveFor(net.minecraft.world.item.crafting.Ingredient ing) {
+        int n = 0;
+        for (ItemStack m : ClientTetris.craft.materials()) {
+            if (ing.test(m)) {
+                n += m.getCount();
+            }
+        }
+        return n;
+    }
+
+    private static final int REC_BTN_Y = 146;
+    private static final int TRACK_Y = 166;
+
+    private ItemStack renderRecipes(GuiGraphics g, int mx, int my) {
+        ItemStack tip = ItemStack.EMPTY;
+        List<RecipeSection> sections = visibleSections();
+        int total = 0;
+        for (RecipeSection sec : sections) {
+            total += 11 + ((sec.cells.size() + RCOLS - 1) / RCOLS) * RCELL + 4;
+        }
+        recipeScroll = Math.max(0, Math.min(Math.max(0, total - (H - 20)), recipeScroll));
+        RecipeCell hovered = recipeAt(mx, my);
+        g.enableScissor((int) ox, (int) (oy + 20 * scale), (int) (ox + LIST_W * scale), (int) (oy + H * scale));
+        int top = 20 - (int) recipeScroll;
+        for (RecipeSection sec : sections) {
+            int known = 0;
+            for (RecipeCell c : sec.cells) {
+                known += c.known ? 1 : 0;
+            }
+            g.drawString(font, sec.category.label.toUpperCase(Locale.ROOT) + "  " + known + "/" + sec.cells.size(), 0, top + 1, 0xFFE0C060, false);
+            int gridTop = top + 11;
+            for (int i = 0; i < sec.cells.size(); i++) {
+                RecipeCell c = sec.cells.get(i);
+                int x = (i % RCOLS) * RCELL;
+                int y = gridTop + (i / RCOLS) * RCELL;
+                if (y + RCELL < 20 || y > H) {
+                    continue;
+                }
+                boolean sel = c.known && c.holder.id().equals(selectedRecipe);
+                g.fill(x, y, x + RCELL - 1, y + RCELL - 1, sel ? 0xFF3A6A3A : c == hovered ? 0xFF4A4A56 : 0xFF2A2A30);
+                g.fill(x + 1, y + 1, x + RCELL - 2, y + RCELL - 2, 0xFF1A1A1F);
+                if (c.known) {
+                    g.renderItem(c.result, x + 1, y + 1);
+                    if (c == hovered) {
+                        tip = c.result;
+                    }
+                } else {
+                    g.drawString(font, "?", x + 6, y + 5, 0xFF555560, false);
+                }
+            }
+            top = gridTop + ((sec.cells.size() + RCOLS - 1) / RCOLS) * RCELL + 4;
+        }
+        g.disableScissor();
+        if (hovered != null && !hovered.known) {
+            g.pose().pushPose();
+            g.pose().translate(0, 0, 400);
+            g.fill(mx + 6, my - 12, mx + 50, my, 0xF0100010);
+            g.drawString(font, "??????", mx + 9, my - 10, 0xFF888888, false);
+            g.pose().popPose();
+        }
+
+        // Selected recipe.
+        g.drawString(font, "RECIPE", PX, 2, 0xFFE0C060, false);
+        RecipeCell sel = null;
+        for (RecipeSection sec : recipeSections()) {
+            for (RecipeCell c : sec.cells) {
+                if (c.holder.id().equals(selectedRecipe)) {
+                    sel = c;
+                }
+            }
+        }
+        if (sel == null) {
+            g.drawWordWrap(font, Component.literal("Click a discovered recipe. You discover recipes by carrying one of their ingredients."),
+                    PX, 16, W - PX, 0xFF666670);
+        } else {
+            g.renderItem(sel.result, PX, 14);
+            g.renderItemDecorations(font, sel.result, PX, 14);
+            g.drawString(font, font.plainSubstrByWidth(sel.result.getHoverName().getString(), W - PX - 22), PX + 20, 18, 0xFFFFFFFF, false);
+            int ly = 36;
+            for (IngredientLine line : ingredientsOf(sel.holder.value())) {
+                if (ly > REC_BTN_Y - 12) {
+                    break;
+                }
+                int have = haveFor(line.ingredient);
+                g.pose().pushPose();
+                g.pose().translate(PX, ly - 1, 0);
+                g.pose().scale(0.625f, 0.625f, 1);
+                g.renderItem(line.display, 0, 0);
+                g.pose().popPose();
+                g.drawString(font, font.plainSubstrByWidth(line.display.getHoverName().getString(), W - PX - 50), PX + 13, ly, 0xFFCCCCCC, false);
+                String c = have + "/" + line.need;
+                g.drawString(font, c, W - font.width(c), ly, have >= line.need ? 0xFF7CFC7C : 0xFFFF6666, false);
+                ly += 11;
+            }
+            for (int b = 0; b < 2; b++) {
+                int bx = PX + b * 84;
+                boolean over = mx >= bx && mx < bx + 80 && my >= REC_BTN_Y && my < REC_BTN_Y + 14;
+                g.fill(bx, REC_BTN_Y, bx + 80, REC_BTN_Y + 14, over ? 0xFF4C8C4C : 0xFF3A6A3A);
+                String t = b == 0 ? "LAY OUT" : "PIN TO HUD";
+                g.drawString(font, t, bx + (80 - font.width(t)) / 2, REC_BTN_Y + 3, 0xFFFFFFFF, false);
+            }
+        }
+
+        // Tracker.
+        g.drawString(font, "TRACKING", PX, TRACK_Y, 0xFFE0C060, false);
+        g.pose().pushPose();
+        g.pose().translate(PX + 52, TRACK_Y + 1, 0);
+        g.pose().scale(0.75f, 0.75f, 1);
+        g.drawString(font, "press T on any item to add", 0, 0, 0xFF666670, false);
+        g.pose().popPose();
+        List<ClientTracker.Entry> entries = ClientTracker.entries();
+        for (int i = 0; i < entries.size(); i++) {
+            ClientTracker.Entry e = entries.get(i);
+            int y = TRACK_Y + 11 + i * 9;
+            if (y > H - 8) {
+                break;
+            }
+            int have = ClientTracker.have(e);
+            g.pose().pushPose();
+            g.pose().translate(PX, y - 1, 0);
+            g.pose().scale(0.5f, 0.5f, 1);
+            g.renderItem(new ItemStack(e.item()), 0, 0);
+            g.pose().popPose();
+            g.pose().pushPose();
+            g.pose().translate(PX + 10, y, 0);
+            g.pose().scale(0.75f, 0.75f, 1);
+            g.drawString(font, font.plainSubstrByWidth(e.name(), 80), 0, 0, 0xFFCCCCCC, false);
+            String c = have + "/" + e.goal();
+            g.drawString(font, c, 112, 0, have >= e.goal() ? 0xFF7CFC7C : 0xFFFFAA55, false);
+            g.pose().popPose();
+            String[] marks = {"-", "+", "x"};
+            for (int b = 0; b < 3; b++) {
+                int bx = W - 30 + b * 10;
+                boolean over = mx >= bx && mx < bx + 9 && my >= y - 1 && my < y + 7;
+                g.fill(bx, y - 1, bx + 9, y + 7, over ? 0xFF4C4C58 : 0xFF33333C);
+                g.drawString(font, marks[b], bx + 2, y - 1, 0xFFDDDDDD, false);
+            }
+        }
+        return tip;
+    }
+
+    private boolean clickRecipes(double x, double y, int button) {
+        RecipeCell cell = recipeAt(x, y);
+        if (cell != null) {
+            if (cell.known) {
+                selectedRecipe = cell.holder.id();
+            }
+            return true;
+        }
+        if (selectedRecipe != null && y >= REC_BTN_Y && y < REC_BTN_Y + 14) {
+            if (x >= PX && x < PX + 80) {
+                ClientPlayNetworking.send(new TetrisNet.Craft(selectedRecipe.toString(), 0));
+                craftView = 0;
+                return true;
+            }
+            if (x >= PX + 84 && x < PX + 164) {
+                for (RecipeSection sec : recipeSections()) {
+                    for (RecipeCell c : sec.cells) {
+                        if (c.holder.id().equals(selectedRecipe)) {
+                            for (IngredientLine line : ingredientsOf(c.holder.value())) {
+                                ClientTracker.add(line.display.getItem(), line.need);
+                            }
+                        }
+                    }
+                }
+                return true;
+            }
+        }
+        List<ClientTracker.Entry> entries = ClientTracker.entries();
+        for (int i = 0; i < entries.size(); i++) {
+            int ty = TRACK_Y + 11 + i * 9;
+            for (int b = 0; b < 3; b++) {
+                int bx = W - 30 + b * 10;
+                if (x >= bx && x < bx + 9 && y >= ty - 1 && y < ty + 7) {
+                    int step = hasShiftDown() ? 10 : 1;
+                    if (b == 0) {
+                        ClientTracker.change(i, -step);
+                    } else if (b == 1) {
+                        ClientTracker.change(i, step);
+                    } else {
+                        ClientTracker.remove(i);
+                    }
+                    return true;
+                }
+            }
+        }
+        return true;
     }
 
     // ================================================================== skills
@@ -925,6 +1294,12 @@ public class TarkovScreen extends Screen {
             g.drawString(font, t, ax, 12, 0xFF000000 | attr.color, false);
             ax += font.width(t) + 14;
         }
+        g.pose().pushPose();
+        g.pose().translate(0, 21, 0);
+        g.pose().scale(0.75f, 0.75f, 1);
+        g.drawString(font, String.format("Crit chance %.0f%%, crit damage +%.0f%%   Attack speed +%.0f%%   Move speed +%.0f%%",
+                stats.critChance(), stats.critDamage(), stats.attackSpeedPct(), stats.moveSpeedPct()), 0, 0, 0xFFBBBBBB, false);
+        g.pose().popPose();
         Skill[] skills = Skill.values();
         for (int i = 0; i < skills.length; i++) {
             Skill skill = skills[i];
@@ -977,6 +1352,9 @@ public class TarkovScreen extends Screen {
         }
         double x = vx(mouseX);
         double y = vy(mouseY);
+        if (renameIndex >= 0) {
+            commitRename();
+        }
         if (tab == CRAFTING) {
             return clickCrafting(x, y, button);
         }
@@ -1009,6 +1387,11 @@ public class TarkovScreen extends Screen {
                     continue;
                 }
                 int top = sec.y - (int) containerScroll;
+                if (button == 0 && x < COL4 + TITLE_W && y >= top - 1 && y < top + 9 && top >= 0) {
+                    renameIndex = sec.index;
+                    renameText = ClientTetris.sync.containers().get(sec.index).name();
+                    return true;
+                }
                 for (int b = 0; b < 3; b++) {
                     int[] r = containerButton(top, b);
                     if (x >= r[0] && x < r[0] + r[2] && y >= r[1] && y < r[1] + 9 && top >= 0) {
@@ -1066,7 +1449,17 @@ public class TarkovScreen extends Screen {
     }
 
     private boolean clickCrafting(double x, double y, int button) {
-        searchFocused = x >= 0 && x < 140 && y >= 0 && y < 14;
+        searchFocused = x >= SEARCH_X && x < LIST_W && y >= 0 && y < 14;
+        for (int v = 0; v < 2; v++) {
+            if (x >= v * 48 && x < v * 48 + 44 && y >= 0 && y < 14) {
+                craftView = v;
+                dropHeld();
+                return true;
+            }
+        }
+        if (craftView == 1) {
+            return clickRecipes(x, y, button);
+        }
         TetrisNet.CraftList craft = ClientTetris.craft;
         if (x >= CLEAR_X && x < W && y >= 0 && y < 12) {
             dropHeld();
@@ -1113,11 +1506,29 @@ public class TarkovScreen extends Screen {
             }
             return true;
         }
+        int hot = craftHotbarAt(x, y);
+        if (hot >= 0) {
+            ItemStack in = minecraft.player.getInventory().items.get(hot);
+            if (!held.isEmpty()) {
+                if (!heldFrom.equals(Loc.hand(hot))) {
+                    ClientPlayNetworking.send(new TetrisNet.Move(heldFrom, Loc.hand(hot), false, button == 1 ? 1 : heldCount));
+                }
+                dropHeld();
+            } else if (!in.isEmpty()) {
+                heldFrom = Loc.hand(hot);
+                held = in;
+                heldCount = button == 1 && in.getCount() > 1 ? (in.getCount() + 1) / 2 : 0;
+            }
+            return true;
+        }
         int mat = materialAt(x, y);
         if (mat != -2) {
             if (!held.isEmpty()) {
                 if (heldFrom.kind() == Loc.CRAFT) {
                     ClientPlayNetworking.send(new TetrisNet.Move(heldFrom, Loc.material(0), false, heldCount));
+                } else if (heldFrom.kind() == Loc.HAND) {
+                    // From the hotbar into your grids.
+                    ClientPlayNetworking.send(new TetrisNet.QuickMove(heldFrom));
                 }
                 dropHeld();
                 return true;
@@ -1162,7 +1573,11 @@ public class TarkovScreen extends Screen {
         if (tab == WEB) {
             return web.mouseScrolled(mouseX, mouseY - TOP, scrollX, scrollY);
         }
-        if (tab == CRAFTING && vx(mouseX) >= PX) {
+        if (tab == CRAFTING && craftView == 1) {
+            if (vx(mouseX) < LIST_W) {
+                recipeScroll -= scrollY * 20;
+            }
+        } else if (tab == CRAFTING && vx(mouseX) >= PX) {
             matScroll -= scrollY * 18;
         } else if (tab == CRAFTING) {
             craftScroll -= scrollY * 20;
@@ -1174,6 +1589,21 @@ public class TarkovScreen extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (keyCode == GLFW.GLFW_KEY_T && renameIndex < 0 && !searchFocused && !hoverStack.isEmpty()) {
+            // T on any item: track it (a stack's worth, or one if it doesn't stack).
+            ClientTracker.add(hoverStack.getItem(), hoverStack.getMaxStackSize() > 1 ? hoverStack.getMaxStackSize() : 1);
+            return true;
+        }
+        if (renameIndex >= 0) {
+            if (keyCode == GLFW.GLFW_KEY_BACKSPACE && !renameText.isEmpty()) {
+                renameText = renameText.substring(0, renameText.length() - 1);
+            } else if (keyCode == GLFW.GLFW_KEY_ENTER || keyCode == GLFW.GLFW_KEY_KP_ENTER) {
+                commitRename();
+            } else if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
+                renameIndex = -1;
+            }
+            return true;
+        }
         if (tab == CRAFTING && searchFocused) {
             if (keyCode == GLFW.GLFW_KEY_BACKSPACE && !search.isEmpty()) {
                 search = search.substring(0, search.length() - 1);
@@ -1225,8 +1655,21 @@ public class TarkovScreen extends Screen {
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
+    private void commitRename() {
+        if (renameIndex >= 0) {
+            ClientPlayNetworking.send(new TetrisNet.ContainerName(renameIndex, renameText));
+            renameIndex = -1;
+        }
+    }
+
     @Override
     public boolean charTyped(char c, int modifiers) {
+        if (renameIndex >= 0) {
+            if (c >= ' ' && renameText.length() < 40) {
+                renameText += c;
+            }
+            return true;
+        }
         if (tab == CRAFTING && searchFocused && c >= ' ' && search.length() < 40) {
             search += c;
             craftScroll = 0;

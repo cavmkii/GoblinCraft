@@ -36,7 +36,7 @@ public final class TetrisNet {
      * that had no room in the grid, with their raw slots.
      */
     public record ContainerView(BlockPos pos, String name, int width, int height, List<Placed> items, List<ItemStack> overflow,
-            List<Integer> overflowSlots, int filter) {
+            List<Integer> overflowSlots, int filter, ItemStack icon) {
         void write(RegistryFriendlyByteBuf buf) {
             buf.writeBlockPos(pos);
             buf.writeUtf(name);
@@ -49,6 +49,7 @@ public final class TetrisNet {
                 buf.writeVarInt(overflowSlots.get(i));
             }
             buf.writeVarInt(filter);
+            ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, icon);
         }
 
         static ContainerView read(RegistryFriendlyByteBuf buf) {
@@ -64,14 +65,15 @@ public final class TetrisNet {
                 overflow.add(ItemStack.STREAM_CODEC.decode(buf));
                 slots.add(buf.readVarInt());
             }
-            return new ContainerView(pos, name, w, h, items, overflow, slots, buf.readVarInt());
+            int filter = buf.readVarInt();
+            return new ContainerView(pos, name, w, h, items, overflow, slots, filter, ItemStack.OPTIONAL_STREAM_CODEC.decode(buf));
         }
     }
 
     /** Server to client: the whole Tetris inventory and whatever container or stash is in reach. */
     public record Sync(ItemStack rig, ItemStack backpack, List<Placed> pockets, List<Placed> rigItems, List<Placed> backpackItems,
             List<Placed> pouch, int pouchW, int pouchH, List<ItemStack> unsorted, boolean stash, List<ContainerView> containers,
-            boolean autoRefill, boolean refillFromStash) implements CustomPacketPayload {
+            boolean autoRefill, boolean refillFromStash, List<String> tracked) implements CustomPacketPayload {
         public static final Type<Sync> TYPE = payloadType("inv_sync");
         public static final StreamCodec<RegistryFriendlyByteBuf, Sync> CODEC = StreamCodec.of((buf, p) -> {
             ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, p.rig);
@@ -87,6 +89,8 @@ public final class TetrisNet {
             buf.writeBoolean(p.stash);
             buf.writeBoolean(p.autoRefill);
             buf.writeBoolean(p.refillFromStash);
+            buf.writeVarInt(p.tracked.size());
+            p.tracked.forEach(buf::writeUtf);
             buf.writeVarInt(p.containers.size());
             p.containers.forEach(c -> c.write(buf));
         }, buf -> {
@@ -106,12 +110,17 @@ public final class TetrisNet {
             boolean stash = buf.readBoolean();
             boolean refill = buf.readBoolean();
             boolean refillStash = buf.readBoolean();
+            int t = buf.readVarInt();
+            List<String> tracked = new ArrayList<>();
+            for (int i = 0; i < t; i++) {
+                tracked.add(buf.readUtf());
+            }
             int c = buf.readVarInt();
             List<ContainerView> containers = new ArrayList<>();
             for (int i = 0; i < c; i++) {
                 containers.add(ContainerView.read(buf));
             }
-            return new Sync(rig, backpack, pockets, rigItems, backpackItems, pouch, pw, ph, unsorted, stash, containers, refill, refillStash);
+            return new Sync(rig, backpack, pockets, rigItems, backpackItems, pouch, pw, ph, unsorted, stash, containers, refill, refillStash, tracked);
         });
         @Override public Type<Sync> type() { return TYPE; }
     }
@@ -156,6 +165,31 @@ public final class TetrisNet {
             buf.writeVarInt(p.button);
         }, buf -> new PanelClick(Loc.read(buf), buf.readBoolean(), buf.readVarInt()));
         @Override public Type<PanelClick> type() { return TYPE; }
+    }
+
+    /** Client to server: the whole gather tracker ("item id=goal" entries), replacing what was there. */
+    public record Track(List<String> entries) implements CustomPacketPayload {
+        public static final Type<Track> TYPE = payloadType("inv_track");
+        public static final StreamCodec<RegistryFriendlyByteBuf, Track> CODEC = StreamCodec.of((buf, p) -> {
+            buf.writeVarInt(p.entries.size());
+            p.entries.forEach(buf::writeUtf);
+        }, buf -> {
+            int n = buf.readVarInt();
+            List<String> list = new ArrayList<>();
+            for (int i = 0; i < n; i++) {
+                list.add(buf.readUtf());
+            }
+            return new Track(list);
+        });
+        @Override public Type<Track> type() { return TYPE; }
+    }
+
+    /** Client to server: rename a container on the right of GEAR (empty name: back to its default). */
+    public record ContainerName(int index, String name) implements CustomPacketPayload {
+        public static final Type<ContainerName> TYPE = payloadType("inv_container_name");
+        public static final StreamCodec<RegistryFriendlyByteBuf, ContainerName> CODEC = StreamCodec.of(
+                (buf, p) -> { buf.writeVarInt(p.index); buf.writeUtf(p.name, 40); }, buf -> new ContainerName(buf.readVarInt(), buf.readUtf(40)));
+        @Override public Type<ContainerName> type() { return TYPE; }
     }
 
     /** Client to server: a container's own buttons. Action 0 sort, 1 take all, 2 set its storage filter to {@code value}. */
@@ -245,5 +279,7 @@ public final class TetrisNet {
         PayloadTypeRegistry.playC2S().register(Craft.TYPE, Craft.CODEC);
         PayloadTypeRegistry.playC2S().register(PanelClick.TYPE, PanelClick.CODEC);
         PayloadTypeRegistry.playC2S().register(ContainerAction.TYPE, ContainerAction.CODEC);
+        PayloadTypeRegistry.playC2S().register(ContainerName.TYPE, ContainerName.CODEC);
+        PayloadTypeRegistry.playC2S().register(Track.TYPE, Track.CODEC);
     }
 }

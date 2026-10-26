@@ -57,6 +57,12 @@ public final class Health {
     }
 
     static void init() {
+        net.fabricmc.fabric.api.entity.event.v1.EntitySleepEvents.STOP_SLEEPING.register((entity, pos) -> {
+            // Only a real night's sleep: you wake in the morning.
+            if (entity instanceof ServerPlayer player && player.isAlive() && player.level().getDayTime() % 24000 < 1000) {
+                restAfterSleep(player);
+            }
+        });
         ServerLivingEntityEvents.AFTER_DAMAGE.register((entity, source, base, taken, blocked) -> {
             if (entity instanceof ServerPlayer player && taken > 0 && player.isAlive()) {
                 onHit(player, source, taken);
@@ -217,6 +223,21 @@ public final class Health {
                 rt.dirty = false;
                 ServerPlayNetworking.send(player, new TarkovNet.BodySync(d.body.clone(), d.conditions.clone(), d.painkillerTicks));
             }
+        }
+    }
+
+    /** A night's sleep heals every part that isn't destroyed by a share of its health. Destroyed parts still need surgery. */
+    static void restAfterSleep(ServerPlayer player) {
+        TarkovData d = Tarkov.data(player);
+        float max = Math.max(1, player.getMaxHealth());
+        float healed = 0;
+        for (BodyPart p : BodyPart.values()) {
+            healed += Body.heal(d, p, (float) (max * p.share * com.cavmkii.seancraft.Cfg.sleepHealPercent / 100), max, false);
+        }
+        if (healed > 0) {
+            player.setHealth(Math.min(max * Body.capFraction(d.body), player.getHealth() + healed));
+            rt(player).dirty = true;
+            player.displayClientMessage(Component.literal("You wake up feeling better.").withStyle(ChatFormatting.GREEN), true);
         }
     }
 

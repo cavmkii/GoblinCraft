@@ -88,7 +88,7 @@ public final class RpgDamage {
             } else if (source.getDirectEntity() instanceof AbstractArrow arrow) {
                 int bows = data.skillLevel(Skill.BOWS);
                 amount = (float) ((amount + stats.primaryDamage())
-                        * (1 + Skill.BOWS.effectValue(bows) / 100.0 + stats.get(Stat.PROJECTILE_DAMAGE) / 100));
+                        * (1 + Skill.BOWS.effectValue(bows) / 100.0 + stats.get(Stat.PROJECTILE_DAMAGE) / 100 + crit(attacker, victim, stats)));
                 ItemStack bow = arrow.getWeaponItem();
                 if (bow != null && Parts.modular(bow)) {
                     amount *= Math.max(0.05f, 1 + Parts.totals(bow).damage);
@@ -103,6 +103,19 @@ public final class RpgDamage {
         return amount;
     }
 
+    /** Rolls a crit: returns the extra damage multiplier (0 if it didn't crit), with a flash and a sound when it does. */
+    private static double crit(ServerPlayer attacker, LivingEntity victim, Stats stats) {
+        if (attacker.getRandom().nextDouble() * 100 >= stats.critChance()) {
+            return 0;
+        }
+        ServerLevel level = (ServerLevel) attacker.level();
+        level.sendParticles(ParticleTypes.CRIT, victim.getX(), victim.getY(0.6), victim.getZ(), 14, 0.3, 0.3, 0.3, 0.35);
+        level.sendParticles(ParticleTypes.ENCHANTED_HIT, victim.getX(), victim.getY(0.6), victim.getZ(), 6, 0.3, 0.3, 0.3, 0.2);
+        level.playSound(null, victim.getX(), victim.getY(), victim.getZ(), net.minecraft.sounds.SoundEvents.PLAYER_ATTACK_CRIT,
+                net.minecraft.sounds.SoundSource.PLAYERS, 1f, 1.2f);
+        return stats.critDamage() / 100;
+    }
+
     private static float melee(ServerPlayer attacker, LivingEntity victim, PlayerData data, Stats stats, float amount) {
         ItemStack weapon = attacker.getMainHandItem();
         double mult = 1 + stats.get(Stat.MELEE_DAMAGE) / 100;
@@ -113,10 +126,7 @@ public final class RpgDamage {
         if (stats.has(Stat.BACKSTAB) && isBehind(attacker, victim)) {
             mult += stats.get(Stat.BACKSTAB) / 100;
         }
-        if (attacker.getRandom().nextDouble() * 100 < stats.get(Stat.CRIT_CHANCE)) {
-            mult += 0.5;
-            ((ServerLevel) attacker.level()).sendParticles(ParticleTypes.CRIT, victim.getX(), victim.getY(1), victim.getZ(), 10, 0.3, 0.3, 0.3, 0.3);
-        }
+        mult += crit(attacker, victim, stats);
         amount *= (float) mult;
 
         // Weapon parts: gold heads hurt undead more, netherite heads set things alight.
