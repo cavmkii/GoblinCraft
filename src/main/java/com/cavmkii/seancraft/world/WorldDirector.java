@@ -150,6 +150,7 @@ public final class WorldDirector {
         GoblinData.NpcSlot slot = slot(kind);
         slot.uuid = mob.getUUID();
         slot.respawnAt = 0;
+        slot.leaveAt = now() + minutes(Cfg.stayMinutesMin, Cfg.stayMinutesMax);
         slot.lastSeen = now();
         slot.lastPos = pos;
         data().setDirty();
@@ -196,6 +197,11 @@ public final class WorldDirector {
         List<ServerPlayer> players = level.players().stream().filter(p -> !p.isSpectator() && p.isAlive()).toList();
 
         if (slot.uuid == null) {
+            if (slot.respawnAt == 0 && slot.lastPos == null && away()) {
+                // A new world: they turn up a little while in, not right away.
+                slot.respawnAt = now + minutes(5, 20);
+                data.setDirty();
+            }
             if (now >= slot.respawnAt && !players.isEmpty()) {
                 ServerPlayer near = players.get(level.random.nextInt(players.size()));
                 BlockPos spot = Wander.pickSpawnPoint(level, near.position(), Cfg.spawnDistanceMin, Cfg.spawnDistanceMax, level.random);
@@ -207,6 +213,22 @@ public final class WorldDirector {
         }
 
         Entity entity = level.getEntity(slot.uuid);
+        if (away() && slot.leaveAt == 0) {
+            slot.leaveAt = now + minutes(Cfg.stayMinutesMin, Cfg.stayMinutesMax);
+            data.setDirty();
+        }
+        if (away() && now >= slot.leaveAt && !busy(now) && noPlayerNear(entity, players)) {
+            // Visit's over: they wander off and come back later.
+            if (entity != null) {
+                entity.discard();
+            }
+            slot.uuid = null;
+            slot.leaveAt = 0;
+            slot.respawnAt = now + minutes(Cfg.awayMinutesMin, Cfg.awayMinutesMax);
+            data.setDirty();
+            SeanCraft.LOG.info("{} wandered off; back in about {} minutes.", kind, (slot.respawnAt - now) / 1200);
+            return;
+        }
         if (entity != null && entity.isAlive()) {
             slot.lastPos = entity.blockPosition();
             data.setDirty();
@@ -242,6 +264,35 @@ public final class WorldDirector {
                 spawn(kind, spot);
             }
         }
+    }
+
+    /** Whether Joe and Sean come and go at all (AwayMinutes above 0). */
+    private static boolean away() {
+        return Cfg.awayMinutesMax > 0;
+    }
+
+    private long minutes(double min, double max) {
+        double m = min + overworld().random.nextDouble() * Math.max(0, max - min);
+        return (long) (m * 60 * 20);
+    }
+
+    /** Never leave mid-fight or during the Baby Wars. */
+    private boolean busy(long now) {
+        Joe joe = joe();
+        return war.isActive() || (joe != null && joe.fight().isActive(now));
+    }
+
+    /** Only vanish when nobody's close enough to watch. */
+    private static boolean noPlayerNear(Entity entity, List<ServerPlayer> players) {
+        if (entity == null) {
+            return true;
+        }
+        for (ServerPlayer p : players) {
+            if (p.distanceToSqr(entity) < 48 * 48) {
+                return false;
+            }
+        }
+        return true;
     }
 
     // ------------------------------------------------------------------ rage
@@ -285,7 +336,7 @@ public final class WorldDirector {
         sb.append(name).append(": ");
         if (slot.uuid == null) {
             long wait = Math.max(0, slot.respawnAt - now()) / 20;
-            sb.append(wait > 0 ? "dead, respawning in " + wait + "s" : "not spawned yet (waiting for a player in the overworld)");
+            sb.append(wait > 0 ? "away (or dead), back in " + wait + "s" : "not spawned yet (waiting for a player in the overworld)");
             return;
         }
         sb.append(slot.lastPos != null ? "last seen at " + slot.lastPos.toShortString() : "position unknown");

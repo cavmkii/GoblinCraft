@@ -35,6 +35,8 @@ public final class GoblinData extends SavedData {
         public long respawnAt;
         public long lastSeen;
         public BlockPos lastPos;
+        /** When a present NPC wanders off (0 = not scheduled yet). */
+        public long leaveAt;
 
         void save(CompoundTag tag) {
             if (uuid != null) {
@@ -42,6 +44,7 @@ public final class GoblinData extends SavedData {
             }
             tag.putLong("respawnAt", respawnAt);
             tag.putLong("lastSeen", lastSeen);
+            tag.putLong("leaveAt", leaveAt);
             if (lastPos != null) {
                 tag.putLong("lastPos", lastPos.asLong());
             }
@@ -51,6 +54,7 @@ public final class GoblinData extends SavedData {
             uuid = tag.hasUUID("uuid") ? tag.getUUID("uuid") : null;
             respawnAt = tag.getLong("respawnAt");
             lastSeen = tag.getLong("lastSeen");
+            leaveAt = tag.getLong("leaveAt");
             lastPos = tag.contains("lastPos") ? BlockPos.of(tag.getLong("lastPos")) : null;
         }
     }

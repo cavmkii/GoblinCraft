@@ -100,6 +100,15 @@ public final class Stash {
         }
     }
 
+    /** Takes up to {@code amount} of a cost from the player, then the stash. Returns how many it took. */
+    public static int takeUpTo(ServerPlayer player, Hideouts.Hideout hideout, Cost cost, int amount) {
+        int n = Math.min(amount, count(player, hideout, cost));
+        if (n > 0) {
+            consume(player, hideout, List.of(new Cost(cost.item(), cost.tag(), n, cost.label())));
+        }
+        return n;
+    }
+
     private static int count(Container container, Cost cost) {
         int n = 0;
         int size = container.getContainerSize();

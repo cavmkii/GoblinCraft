@@ -178,6 +178,10 @@ public final class Tetris {
             action(ctx.player(), p.action());
             sync(ctx.player());
         });
+        ServerPlayNetworking.registerGlobalReceiver(TetrisNet.ContainerAction.TYPE, (p, ctx) -> {
+            containerAction(ctx.player(), p.index(), p.action());
+            sync(ctx.player());
+        });
         ServerPlayNetworking.registerGlobalReceiver(TetrisNet.PanelClick.TYPE, (p, ctx) -> {
             panelClick(ctx.player(), p.loc(), p.rotated(), p.button());
             sync(ctx.player());
@@ -445,6 +449,24 @@ public final class Tetris {
             }
         }
         return out;
+    }
+
+    /** A random live stack from pockets, rig or backpack, for Joe to steal from. Empty if there's nothing. */
+    public static ItemStack stealable(ServerPlayer player, net.minecraft.util.RandomSource random) {
+        List<Placed> all = new ArrayList<>();
+        InvData data = data(player);
+        for (GridId id : AUTO) {
+            for (Placed p : data.list(id)) {
+                if (!p.stack.isEmpty()) {
+                    all.add(p);
+                }
+            }
+        }
+        if (all.isEmpty()) {
+            return ItemStack.EMPTY;
+        }
+        rt(player).dirty = true;
+        return all.get(random.nextInt(all.size())).stack;
     }
 
     /** A projectile from rig, pockets or backpack, when hands and hotbar have none. */
@@ -1026,6 +1048,38 @@ public final class Tetris {
             menu.setCarried(carried.isEmpty() ? ItemStack.EMPTY : carried);
         }
         menu.broadcastChanges();
+        rt(player).dirty = true;
+    }
+
+    /** A container's SORT (0) and TAKE ALL (1) buttons. */
+    static void containerAction(ServerPlayer player, int index, int action) {
+        if (!player.isAlive() || !active(player)) {
+            return;
+        }
+        List<Shown> shown = containers(player);
+        if (index < 0 || index >= shown.size()) {
+            return;
+        }
+        Shown c = shown.get(index);
+        ContainerGrid g = c.grid();
+        if (action == 0) {
+            g.sort();
+        } else if (action == 1) {
+            InvData data = data(player);
+            for (int slot = 0; slot < c.container.getContainerSize(); slot++) {
+                ItemStack stack = c.container.getItem(slot);
+                if (stack.isEmpty()) {
+                    continue;
+                }
+                storeInGrids(player, data, stack);
+                if (stack.isEmpty()) {
+                    c.container.setItem(slot, ItemStack.EMPTY);
+                    g.forget(slot);
+                }
+            }
+        }
+        g.save();
+        c.container.setChanged();
         rt(player).dirty = true;
     }
 

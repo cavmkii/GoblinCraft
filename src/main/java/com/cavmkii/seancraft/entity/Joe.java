@@ -384,6 +384,14 @@ public class Joe extends PathfinderMob {
 
     /** Takes up to StealMaxStack items from one random stack that isn't in the player's hand or worn. */
     private static ItemStack pickPocket(ServerPlayer player) {
+        if (com.cavmkii.seancraft.tetris.Tetris.active(player)) {
+            // Pockets, rig or backpack; never the hotbar, worn gear or the secure pouch.
+            ItemStack stack = com.cavmkii.seancraft.tetris.Tetris.stealable(player, player.getRandom());
+            if (stack.isEmpty()) {
+                return ItemStack.EMPTY;
+            }
+            return stack.split(Math.max(1, Math.min(Cfg.stealMaxStack, stack.getCount())));
+        }
         Inventory inventory = player.getInventory();
         List<Integer> slots = new ArrayList<>();
         for (int i = 0; i < inventory.items.size(); i++) {

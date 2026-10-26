@@ -431,7 +431,20 @@ public final class Tarkov {
                 continue;
             }
             Module.Level next = module.levels.get(current);
-            List<TarkovNet.CostLine> costs = costLines(player, h, next.costs());
+            int[] given = h.given(module);
+            List<TarkovNet.CostLine> costs = new ArrayList<>();
+            boolean complete = true;
+            boolean canGive = false;
+            for (int c = 0; c < next.costs().size(); c++) {
+                Cost cost = next.costs().get(c);
+                boolean underway = h.building == module.ordinal();
+                int put = underway ? cost.count() : given[c];
+                int missing = Math.max(0, cost.count() - put);
+                int carry = Math.min(missing, Stash.count(player, h, cost));
+                complete &= missing == 0;
+                canGive |= carry > 0;
+                costs.add(new TarkovNet.CostLine(cost.label(), id(cost.icon()), put, cost.count(), carry));
+            }
             int status;
             String note;
             int progress = 0;
@@ -440,15 +453,15 @@ public final class Tarkov {
                 long total = Math.max(1, h.buildDone - h.buildStarted);
                 progress = (int) Math.min(100, (now - h.buildStarted) * 100 / total);
                 note = "Building, " + Math.max(0, (h.buildDone - now) / 20) + "s left";
+            } else if (!complete) {
+                status = canGive || player.getAbilities().instabuild ? TarkovNet.Entry.GIVE : TarkovNet.Entry.SHORT;
+                note = canGive ? "Put in what you have" : "Bring more materials";
             } else if (h.building >= 0) {
                 status = TarkovNet.Entry.BUSY;
                 note = "Another module is being built";
             } else if (next.needs() != null && h.level(next.needs()) < next.needsLevel()) {
                 status = TarkovNet.Entry.LOCKED;
                 note = "Needs " + next.needs().label + " " + next.needsLevel();
-            } else if (!Stash.canAfford(player, h, next.costs())) {
-                status = TarkovNet.Entry.SHORT;
-                note = "Not enough materials";
             } else {
                 status = TarkovNet.Entry.READY;
                 note = "Build level " + (current + 1) + " (" + buildSeconds(h, next) + "s)";
@@ -497,14 +510,27 @@ public final class Tarkov {
                 return;
             }
             int current = h.level(module);
-            if (h.building >= 0 || current >= module.max()) {
+            if (h.building == module.ordinal() || current >= module.max()) {
                 return;
             }
             Module.Level next = module.levels.get(current);
-            if (next.needs() != null && h.level(next.needs()) < next.needsLevel() || !Stash.canAfford(player, h, next.costs())) {
+            int[] given = h.given(module);
+            boolean complete = true;
+            for (int c = 0; c < next.costs().size(); c++) {
+                Cost cost = next.costs().get(c);
+                int missing = Math.max(0, cost.count() - given[c]);
+                if (missing > 0) {
+                    // Contribute: put in whatever you have toward it.
+                    given[c] += player.getAbilities().instabuild ? missing : Stash.takeUpTo(player, h, cost, missing);
+                }
+                complete &= given[c] >= cost.count();
+            }
+            Hideouts.get(level).setDirty();
+            // Contributions can go in any time; building needs everything in, the prerequisite, and a free slot.
+            if (!complete || h.building >= 0 || next.needs() != null && h.level(next.needs()) < next.needsLevel()) {
                 return;
             }
-            Stash.consume(player, h, next.costs());
+            h.given[module.ordinal()] = null;
             long now = level.getGameTime();
             h.building = module.ordinal();
             h.buildStarted = now;
@@ -527,7 +553,7 @@ public final class Tarkov {
     private static List<TarkovNet.CostLine> costLines(ServerPlayer player, Hideouts.Hideout h, List<Cost> costs) {
         List<TarkovNet.CostLine> lines = new ArrayList<>();
         for (Cost cost : costs) {
-            lines.add(new TarkovNet.CostLine(cost.label(), id(cost.icon()), Stash.count(player, h, cost), cost.count()));
+            lines.add(new TarkovNet.CostLine(cost.label(), id(cost.icon()), Stash.count(player, h, cost), cost.count(), 0));
         }
         return lines;
     }
