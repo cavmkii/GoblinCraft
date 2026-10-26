@@ -24,7 +24,22 @@ public final class ContainerGrid {
             .initializer(HashMap::new)
             .buildAndRegister(SeanCraft.id("container_layout"));
 
+    /** Storage filter: which {@link StorageCategory} kinds this container takes when things are put away for you. */
+    public static final AttachmentType<Integer> FILTER = AttachmentRegistry.<Integer>builder()
+            .persistent(Codec.INT)
+            .buildAndRegister(SeanCraft.id("storage_filter"));
+
     public static final int WIDTH = 9;
+
+    public int filter() {
+        Integer mask = holder.getAttached(FILTER);
+        return mask == null ? StorageCategory.ALL : mask;
+    }
+
+    public void setFilter(int mask) {
+        holder.setAttached(FILTER, mask & StorageCategory.ALL);
+        holder.setChanged();
+    }
 
     public final Container container;
     private final BlockEntity holder;

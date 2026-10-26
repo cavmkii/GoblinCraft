@@ -142,6 +142,10 @@ final class CraftGrid {
             Tetris.give(player, out);
             made++;
         }
+        // The recipe stays selected: lay it out again so the next click crafts another.
+        if (made > 0 && Tetris.rt(player).lastRecipe != null && cells.stream().allMatch(ItemStack::isEmpty)) {
+            fill(player, Tetris.rt(player).lastRecipe, false);
+        }
         if (made > 0) {
             player.awardStat(net.minecraft.stats.Stats.ITEM_CRAFTED.get(first.getItem()), made * first.getCount());
             player.level().playSound(null, player.blockPosition(), SoundEvents.UI_STONECUTTER_TAKE_RESULT, SoundSource.PLAYERS, 0.4f, 1.2f);

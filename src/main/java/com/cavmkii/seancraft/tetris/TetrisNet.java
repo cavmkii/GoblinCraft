@@ -36,7 +36,7 @@ public final class TetrisNet {
      * that had no room in the grid, with their raw slots.
      */
     public record ContainerView(BlockPos pos, String name, int width, int height, List<Placed> items, List<ItemStack> overflow,
-            List<Integer> overflowSlots) {
+            List<Integer> overflowSlots, int filter) {
         void write(RegistryFriendlyByteBuf buf) {
             buf.writeBlockPos(pos);
             buf.writeUtf(name);
@@ -48,6 +48,7 @@ public final class TetrisNet {
                 ItemStack.STREAM_CODEC.encode(buf, overflow.get(i));
                 buf.writeVarInt(overflowSlots.get(i));
             }
+            buf.writeVarInt(filter);
         }
 
         static ContainerView read(RegistryFriendlyByteBuf buf) {
@@ -63,14 +64,14 @@ public final class TetrisNet {
                 overflow.add(ItemStack.STREAM_CODEC.decode(buf));
                 slots.add(buf.readVarInt());
             }
-            return new ContainerView(pos, name, w, h, items, overflow, slots);
+            return new ContainerView(pos, name, w, h, items, overflow, slots, buf.readVarInt());
         }
     }
 
     /** Server to client: the whole Tetris inventory and whatever container or stash is in reach. */
     public record Sync(ItemStack rig, ItemStack backpack, List<Placed> pockets, List<Placed> rigItems, List<Placed> backpackItems,
-            List<Placed> pouch, int pouchW, int pouchH, List<ItemStack> unsorted, boolean stash, List<ContainerView> containers)
-            implements CustomPacketPayload {
+            List<Placed> pouch, int pouchW, int pouchH, List<ItemStack> unsorted, boolean stash, List<ContainerView> containers,
+            boolean autoRefill, boolean refillFromStash) implements CustomPacketPayload {
         public static final Type<Sync> TYPE = payloadType("inv_sync");
         public static final StreamCodec<RegistryFriendlyByteBuf, Sync> CODEC = StreamCodec.of((buf, p) -> {
             ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, p.rig);
@@ -84,6 +85,8 @@ public final class TetrisNet {
             buf.writeVarInt(p.unsorted.size());
             p.unsorted.forEach(s -> ItemStack.STREAM_CODEC.encode(buf, s));
             buf.writeBoolean(p.stash);
+            buf.writeBoolean(p.autoRefill);
+            buf.writeBoolean(p.refillFromStash);
             buf.writeVarInt(p.containers.size());
             p.containers.forEach(c -> c.write(buf));
         }, buf -> {
@@ -101,12 +104,14 @@ public final class TetrisNet {
                 unsorted.add(ItemStack.STREAM_CODEC.decode(buf));
             }
             boolean stash = buf.readBoolean();
+            boolean refill = buf.readBoolean();
+            boolean refillStash = buf.readBoolean();
             int c = buf.readVarInt();
             List<ContainerView> containers = new ArrayList<>();
             for (int i = 0; i < c; i++) {
                 containers.add(ContainerView.read(buf));
             }
-            return new Sync(rig, backpack, pockets, rigItems, backpackItems, pouch, pw, ph, unsorted, stash, containers);
+            return new Sync(rig, backpack, pockets, rigItems, backpackItems, pouch, pw, ph, unsorted, stash, containers, refill, refillStash);
         });
         @Override public Type<Sync> type() { return TYPE; }
     }
@@ -153,17 +158,18 @@ public final class TetrisNet {
         @Override public Type<PanelClick> type() { return TYPE; }
     }
 
-    /** Client to server: a container's own buttons. Action 0 sort, 1 take all. */
-    public record ContainerAction(int index, int action) implements CustomPacketPayload {
+    /** Client to server: a container's own buttons. Action 0 sort, 1 take all, 2 set its storage filter to {@code value}. */
+    public record ContainerAction(int index, int action, int value) implements CustomPacketPayload {
         public static final Type<ContainerAction> TYPE = payloadType("inv_container_action");
         public static final StreamCodec<RegistryFriendlyByteBuf, ContainerAction> CODEC = StreamCodec.of(
-                (buf, p) -> { buf.writeVarInt(p.index); buf.writeVarInt(p.action); }, buf -> new ContainerAction(buf.readVarInt(), buf.readVarInt()));
+                (buf, p) -> { buf.writeVarInt(p.index); buf.writeVarInt(p.action); buf.writeVarInt(p.value); },
+                buf -> new ContainerAction(buf.readVarInt(), buf.readVarInt(), buf.readVarInt()));
         @Override public Type<ContainerAction> type() { return TYPE; }
     }
 
     /**
      * Client to server: buttons. 0 sort, 1 transfer all to stash, 2 drop all unsorted, 3 close container,
-     * 4 screen opened, 5 screen closed.
+     * 4 screen opened, 5 screen closed, 6 toggle hotbar auto-refill, 7 toggle refilling from the stash, 8 organize the stash by its filters.
      */
     public record Action(int action) implements CustomPacketPayload {
         public static final Type<Action> TYPE = payloadType("inv_action");
@@ -180,7 +186,7 @@ public final class TetrisNet {
      * you can draw on, whether you're in a hideout, and whether a crafting table is in reach.
      */
     public record CraftList(List<CraftEntry> entries, List<ItemStack> grid, ItemStack result, boolean needsTable,
-            List<ItemStack> materials, boolean inHideout, boolean table) implements CustomPacketPayload {
+            List<ItemStack> materials, boolean inHideout, boolean table, String selected) implements CustomPacketPayload {
         public static final Type<CraftList> TYPE = payloadType("craft_list");
         public static final StreamCodec<RegistryFriendlyByteBuf, CraftList> CODEC = StreamCodec.of((buf, p) -> {
             buf.writeVarInt(p.entries.size());
@@ -198,6 +204,7 @@ public final class TetrisNet {
             p.materials.forEach(m -> ItemStack.STREAM_CODEC.encode(buf, m));
             buf.writeBoolean(p.inHideout);
             buf.writeBoolean(p.table);
+            buf.writeUtf(p.selected);
         }, buf -> {
             int n = buf.readVarInt();
             List<CraftEntry> list = new ArrayList<>();
@@ -215,7 +222,7 @@ public final class TetrisNet {
             for (int i = 0; i < m; i++) {
                 materials.add(ItemStack.STREAM_CODEC.decode(buf));
             }
-            return new CraftList(list, grid, result, needsTable, materials, buf.readBoolean(), buf.readBoolean());
+            return new CraftList(list, grid, result, needsTable, materials, buf.readBoolean(), buf.readBoolean(), buf.readUtf());
         });
         @Override public Type<CraftList> type() { return TYPE; }
     }

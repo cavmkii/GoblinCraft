@@ -30,8 +30,9 @@ import org.lwjgl.glfw.GLFW;
  * CRAFTING: recipes you can make from everything you carry. SKILLS: character level, attributes and use-skills.
  * STATUS: body health and meds.
  *
- * <p>GEAR controls: click to pick up, click to put down, R to rotate, Shift+click to take half, Ctrl+click to
- * transfer, 1-9 to send the hovered item to a hotbar slot, right-click or Esc to let go.
+ * <p>GEAR controls, mostly vanilla's: click to pick up and put down, right-click to pick up half or put down one,
+ * Shift+click (or Ctrl) to transfer, R to rotate, 1-9 to send the hovered item to a hotbar slot, Q to drop one
+ * (Ctrl+Q the stack), Esc to let go.
  */
 public class TarkovScreen extends Screen {
     public static final int GEAR = 0;
@@ -164,13 +165,18 @@ public class TarkovScreen extends Screen {
         };
     }
 
+    /** Hotbar auto-refill toggles beside the HOTBAR label: x, width. */
+    private static final int[][] TOGGLES = {{44, 52}, {100, 62}};
+
     private static final String[] EQUIP_NAMES = {"Head", "Chest", "Legs", "Feet", "Rig", "Backpack", "Off-hand"};
 
     private static final int BTN_X = 164;
     private static final int BTN_W = 90;
-    private static final int[] BTN_Y = {150, 166, 182};
-    private static final String[] BTN = {"SORT", "STASH ALL", "DROP UNSORTED"};
-    private static final int DISCARD_Y = 198;
+    private static final int[] BTN_Y = {146, 159, 172, 185};
+    private static final String[] BTN = {"SORT", "STASH ALL", "ORGANIZE STASH", "DROP UNSORTED"};
+    private static final int[] BTN_ACTION = {0, 1, 8, 2};
+    private static final int BTN_H = 12;
+    private static final int DISCARD_Y = 199;
 
     /** Rows on the right: unsorted first, then each container. y is before scrolling. */
     private record Section(int kind, int index, String title, int y, int height) {}
@@ -244,7 +250,7 @@ public class TarkovScreen extends Screen {
                 return Loc.grid(b.id, (int) ((x - b.x) / C), (int) ((y - b.y) / C));
             }
         }
-        if (x >= BTN_X && x < BTN_X + BTN_W && y >= DISCARD_Y && y < DISCARD_Y + 20) {
+        if (x >= BTN_X && x < BTN_X + BTN_W && y >= DISCARD_Y && y < DISCARD_Y + 19) {
             return Loc.discard();
         }
         if (x >= COL4 && x < COL4 + COL4_W && y >= 0 && y < H) {
@@ -425,6 +431,17 @@ public class TarkovScreen extends Screen {
             }
         }
         label(g, "HOTBAR", 0, 180);
+        for (int t = 0; t < 2; t++) {
+            int[] r = TOGGLES[t];
+            boolean on = t == 0 ? s.autoRefill() : s.refillFromStash();
+            boolean over = mx >= r[0] && mx < r[0] + r[1] && my >= 179 && my < 188;
+            g.fill(r[0], 179, r[0] + r[1], 188, on ? (over ? 0xFF4C8C4C : 0xFF3A6A3A) : (over ? 0xFF4C4C58 : 0xFF33333C));
+            g.pose().pushPose();
+            g.pose().translate(r[0] + 3, 180.5f, 0);
+            g.pose().scale(0.75f, 0.75f, 1);
+            g.drawString(font, (t == 0 ? "REFILL " : "FROM STASH ") + (on ? "ON" : "OFF"), 0, 0, 0xFFDDDDDD, false);
+            g.pose().popPose();
+        }
         for (int i = 0; i < 9; i++) {
             slot(g, i * C, 190, C, stackAt(Loc.hand(i)), hover != null && hover.equals(Loc.hand(i)), null);
         }
@@ -447,17 +464,23 @@ public class TarkovScreen extends Screen {
         }
 
         for (int i = 0; i < BTN.length; i++) {
-            boolean h = mx >= BTN_X && mx < BTN_X + BTN_W && my >= BTN_Y[i] && my < BTN_Y[i] + 14;
+            boolean h = mx >= BTN_X && mx < BTN_X + BTN_W && my >= BTN_Y[i] && my < BTN_Y[i] + BTN_H;
             boolean enabled = i != 1 || !s.containers().isEmpty();
-            enabled &= i != 2 || !s.unsorted().isEmpty();
-            g.fill(BTN_X, BTN_Y[i], BTN_X + BTN_W, BTN_Y[i] + 14, !enabled ? 0xFF1E1E22 : h ? 0xFF4C4C58 : 0xFF33333C);
-            g.drawString(font, BTN[i], BTN_X + (BTN_W - font.width(BTN[i])) / 2, BTN_Y[i] + 3, enabled ? 0xFFDDDDDD : 0xFF555555, false);
+            enabled &= i != 2 || s.stash();
+            enabled &= i != 3 || !s.unsorted().isEmpty();
+            g.fill(BTN_X, BTN_Y[i], BTN_X + BTN_W, BTN_Y[i] + BTN_H, !enabled ? 0xFF1E1E22 : h ? 0xFF4C4C58 : 0xFF33333C);
+            g.pose().pushPose();
+            g.pose().translate(BTN_X + BTN_W / 2f, BTN_Y[i] + 3, 0);
+            g.pose().scale(0.85f, 0.85f, 1);
+            g.drawString(font, BTN[i], -font.width(BTN[i]) / 2, 0, enabled ? 0xFFDDDDDD : 0xFF555555, false);
+            g.pose().popPose();
         }
         boolean overDiscard = hover != null && hover.kind() == Loc.DISCARD;
-        g.fill(BTN_X, DISCARD_Y, BTN_X + BTN_W, DISCARD_Y + 20, overDiscard && !held.isEmpty() ? 0xFF803030 : 0xFF3A2020);
+        g.fill(BTN_X, DISCARD_Y, BTN_X + BTN_W, DISCARD_Y + 19, overDiscard && !held.isEmpty() ? 0xFF803030 : 0xFF3A2020);
         g.drawString(font, "DISCARD", BTN_X + (BTN_W - font.width("DISCARD")) / 2, DISCARD_Y + 6, 0xFFCC8888, false);
 
         renderRight(g, hover);
+        renderFilter(g, mx, my);
         renderHeld(g, mx, my, hover);
         return tip;
     }
@@ -527,7 +550,8 @@ public class TarkovScreen extends Screen {
         g.enableScissor(sx0, sy0, (int) (ox + (COL4 + COL4_W) * scale) + 1, (int) (oy + H * scale));
         for (Section sec : secs) {
             int y = sec.y - (int) containerScroll;
-            g.drawString(font, sec.title, COL4, y, sec.kind == Loc.UNSORTED ? 0xFFFF7755 : 0xFFE0C060, false);
+            String title = sec.kind == Loc.UNSORTED ? sec.title : font.plainSubstrByWidth(sec.title, COL4_W - 102);
+            g.drawString(font, title, COL4, y, sec.kind == Loc.UNSORTED ? 0xFFFF7755 : 0xFFE0C060, false);
             if (sec.kind == Loc.UNSORTED) {
                 List<ItemStack> list = ClientTetris.sync.unsorted();
                 for (int i = 0; i < list.size(); i++) {
@@ -537,14 +561,15 @@ public class TarkovScreen extends Screen {
                 continue;
             }
             TetrisNet.ContainerView c = ClientTetris.sync.containers().get(sec.index);
-            for (int b = 0; b < 2; b++) {
+            for (int b = 0; b < 3; b++) {
                 int[] r = containerButton(y, b);
                 boolean hb = lastMx >= r[0] && lastMx < r[0] + r[2] && lastMy >= r[1] && lastMy < r[1] + 9;
-                g.fill(r[0], r[1], r[0] + r[2], r[1] + 9, hb ? 0xFF4C4C58 : 0xFF33333C);
+                boolean filtered = b == 2 && c.filter() != com.cavmkii.seancraft.tetris.StorageCategory.ALL;
+                g.fill(r[0], r[1], r[0] + r[2], r[1] + 9, filtered ? (hb ? 0xFF4C8C4C : 0xFF3A6A3A) : hb ? 0xFF4C4C58 : 0xFF33333C);
                 g.pose().pushPose();
                 g.pose().translate(r[0] + 3, r[1] + 1.5f, 0);
                 g.pose().scale(0.75f, 0.75f, 1);
-                g.drawString(font, b == 0 ? "SORT" : "TAKE ALL", 0, 0, 0xFFDDDDDD, false);
+                g.drawString(font, b == 0 ? "SORT" : b == 1 ? "TAKE ALL" : "FILTER", 0, 0, 0xFFDDDDDD, false);
                 g.pose().popPose();
             }
             renderGrid(g, new GridRef(COL4, y + 10, c.width(), c.height(), c.items()));
@@ -576,9 +601,87 @@ public class TarkovScreen extends Screen {
         };
     }
 
+    private int filterOpen = -1;
+    private int filterY;
+    private static final int FILTER_W = 110;
+    private static final int FILTER_ROW = 11;
+
+    /** The storage filter checklist for one container, drawn over the right column. */
+    private void renderFilter(GuiGraphics g, int mx, int my) {
+        if (filterOpen < 0 || filterOpen >= ClientTetris.sync.containers().size()) {
+            filterOpen = -1;
+            return;
+        }
+        int mask = ClientTetris.sync.containers().get(filterOpen).filter();
+        var cats = com.cavmkii.seancraft.tetris.StorageCategory.values();
+        int x = COL4 + COL4_W - FILTER_W;
+        int y = Math.min(filterY, H - (cats.length + 2) * FILTER_ROW - 6);
+        g.pose().pushPose();
+        g.pose().translate(0, 0, 400);
+        g.fill(x - 1, y - 1, x + FILTER_W + 1, y + (cats.length + 2) * FILTER_ROW + 5, 0xFF000000);
+        g.fill(x, y, x + FILTER_W, y + (cats.length + 2) * FILTER_ROW + 4, 0xFF1C1C22);
+        g.drawString(font, "Puts away here:", x + 4, y + 3, 0xFFE0C060, false);
+        for (int i = 0; i < cats.length; i++) {
+            int ry = y + (i + 1) * FILTER_ROW + 3;
+            boolean on = (mask & cats[i].bit()) != 0;
+            boolean hover = mx >= x && mx < x + FILTER_W && my >= ry && my < ry + FILTER_ROW;
+            if (hover) {
+                g.fill(x + 1, ry, x + FILTER_W - 1, ry + FILTER_ROW, 0xFF2A2A34);
+            }
+            g.fill(x + 4, ry + 1, x + 12, ry + 9, on ? 0xFF3FA34D : 0xFF3A2020);
+            g.drawString(font, on ? "✔" : "✖", x + 5, ry + 1, 0xFFFFFFFF, false);
+            g.drawString(font, cats[i].label, x + 16, ry + 1, on ? 0xFFDDDDDD : 0xFF777777, false);
+        }
+        int by = y + (cats.length + 1) * FILTER_ROW + 4;
+        for (int b = 0; b < 2; b++) {
+            int bx = x + 4 + b * 52;
+            boolean hover = mx >= bx && mx < bx + 48 && my >= by && my < by + 10;
+            g.fill(bx, by, bx + 48, by + 10, hover ? 0xFF4C4C58 : 0xFF33333C);
+            String t = b == 0 ? "ALLOW ALL" : "CLEAR";
+            g.pose().pushPose();
+            g.pose().translate(bx + 24, by + 2, 0);
+            g.pose().scale(0.75f, 0.75f, 1);
+            g.drawString(font, t, -font.width(t) / 2, 0, 0xFFDDDDDD, false);
+            g.pose().popPose();
+        }
+        g.pose().popPose();
+    }
+
+    /** Clicks on the open filter. Clicking outside closes it. Returns true if the click was used. */
+    private boolean clickFilter(double mx, double my) {
+        int mask = ClientTetris.sync.containers().get(filterOpen).filter();
+        var cats = com.cavmkii.seancraft.tetris.StorageCategory.values();
+        int x = COL4 + COL4_W - FILTER_W;
+        int y = Math.min(filterY, H - (cats.length + 2) * FILTER_ROW - 6);
+        if (mx < x || mx >= x + FILTER_W || my < y || my >= y + (cats.length + 2) * FILTER_ROW + 4) {
+            filterOpen = -1;
+            return false;
+        }
+        for (int i = 0; i < cats.length; i++) {
+            int ry = y + (i + 1) * FILTER_ROW + 3;
+            if (my >= ry && my < ry + FILTER_ROW) {
+                ClientPlayNetworking.send(new TetrisNet.ContainerAction(filterOpen, 2, mask ^ cats[i].bit()));
+                return true;
+            }
+        }
+        int by = y + (cats.length + 1) * FILTER_ROW + 4;
+        if (my >= by && my < by + 10) {
+            if (mx >= x + 4 && mx < x + 52) {
+                ClientPlayNetworking.send(new TetrisNet.ContainerAction(filterOpen, 2, com.cavmkii.seancraft.tetris.StorageCategory.ALL));
+            } else if (mx >= x + 56 && mx < x + 104) {
+                ClientPlayNetworking.send(new TetrisNet.ContainerAction(filterOpen, 2, 0));
+            }
+        }
+        return true;
+    }
+
     /** x, y, width of a container section's SORT (0) or TAKE ALL (1) button; {@code y} is the section's on-screen top. */
     private static int[] containerButton(int y, int which) {
-        return which == 0 ? new int[] {COL4 + COL4_W - 66, y - 1, 24} : new int[] {COL4 + COL4_W - 40, y - 1, 40};
+        return switch (which) {
+            case 0 -> new int[] {COL4 + COL4_W - 66, y - 1, 24};
+            case 1 -> new int[] {COL4 + COL4_W - 40, y - 1, 40};
+            default -> new int[] {COL4 + COL4_W - 99, y - 1, 31};
+        };
     }
 
     private void renderHeld(GuiGraphics g, int mx, int my, Loc hover) {
@@ -709,7 +812,11 @@ public class TarkovScreen extends Screen {
             }
             TetrisNet.CraftEntry e = list.get(i);
             boolean hover = mx >= 0 && mx < LIST_W && my >= y && my < y + ROW - 2 && my >= top;
-            g.fill(0, y, LIST_W, y + ROW - 2, hover ? 0xFF26262E : 0xFF1C1C22);
+            boolean selected = e.id().equals(craft.selected());
+            g.fill(0, y, LIST_W, y + ROW - 2, selected ? 0xFF2E3A2E : hover ? 0xFF26262E : 0xFF1C1C22);
+            if (selected) {
+                g.fill(0, y, 2, y + ROW - 2, 0xFF7CFC7C);
+            }
             g.renderItem(e.result(), 3, y + 2);
             g.renderItemDecorations(font, e.result(), 3, y + 2);
             g.drawString(font, font.plainSubstrByWidth(e.result().getHoverName().getString(), LIST_W - 90), 24, y + 6, 0xFFFFFFFF, false);
@@ -876,16 +983,23 @@ public class TarkovScreen extends Screen {
         if (tab != GEAR) {
             return super.mouseClicked(mouseX, mouseY, button);
         }
-        if (button == 1) {
-            dropHeld();
-            return true;
-        }
-        if (button != 0) {
+        if (button != 0 && button != 1) {
             return false;
         }
-        for (int i = 0; i < BTN.length; i++) {
-            if (x >= BTN_X && x < BTN_X + BTN_W && y >= BTN_Y[i] && y < BTN_Y[i] + 14) {
-                ClientPlayNetworking.send(new TetrisNet.Action(i));
+        int wasOpen = filterOpen;
+        if (filterOpen >= 0 && clickFilter(x, y)) {
+            return true;
+        }
+        for (int i = 0; i < BTN.length && button == 0; i++) {
+            if (x >= BTN_X && x < BTN_X + BTN_W && y >= BTN_Y[i] && y < BTN_Y[i] + BTN_H) {
+                ClientPlayNetworking.send(new TetrisNet.Action(BTN_ACTION[i]));
+                return true;
+            }
+        }
+        for (int t = 0; t < 2 && button == 0; t++) {
+            int[] r = TOGGLES[t];
+            if (x >= r[0] && x < r[0] + r[1] && y >= 179 && y < 188) {
+                ClientPlayNetworking.send(new TetrisNet.Action(6 + t));
                 return true;
             }
         }
@@ -895,10 +1009,15 @@ public class TarkovScreen extends Screen {
                     continue;
                 }
                 int top = sec.y - (int) containerScroll;
-                for (int b = 0; b < 2; b++) {
+                for (int b = 0; b < 3; b++) {
                     int[] r = containerButton(top, b);
                     if (x >= r[0] && x < r[0] + r[2] && y >= r[1] && y < r[1] + 9 && top >= 0) {
-                        ClientPlayNetworking.send(new TetrisNet.ContainerAction(sec.index, b));
+                        if (b == 2) {
+                            filterOpen = wasOpen == sec.index ? -1 : sec.index;
+                            filterY = top + 9;
+                        } else {
+                            ClientPlayNetworking.send(new TetrisNet.ContainerAction(sec.index, b, 0));
+                        }
                         return true;
                     }
                 }
@@ -906,7 +1025,18 @@ public class TarkovScreen extends Screen {
         }
         Loc loc = locAt(x, y);
         if (!held.isEmpty()) {
-            if (loc != null && !(loc.equals(heldFrom) && heldCount == 0 && !rotationChanged())) {
+            if (button == 1 && loc != null && !loc.equals(heldFrom)) {
+                // Right-click: put down one and keep holding the rest, like vanilla.
+                int carrying = heldCount > 0 ? heldCount : held.getCount();
+                ClientPlayNetworking.send(new TetrisNet.Move(heldFrom, loc, heldRot, 1));
+                if (carrying - 1 <= 0) {
+                    dropHeld();
+                } else {
+                    heldCount = carrying - 1;
+                }
+                return true;
+            }
+            if (button == 0 && loc != null && !(loc.equals(heldFrom) && heldCount == 0 && !rotationChanged())) {
                 ClientPlayNetworking.send(new TetrisNet.Move(heldFrom, loc, heldRot, heldCount));
             }
             dropHeld();
@@ -916,7 +1046,8 @@ public class TarkovScreen extends Screen {
         if (loc == null || stack.isEmpty() || loc.kind() == Loc.DISCARD) {
             return true;
         }
-        if (hasControlDown()) {
+        if (button == 0 && (hasShiftDown() || hasControlDown())) {
+            // Shift-click (or Ctrl) sends it across, like vanilla.
             ClientPlayNetworking.send(new TetrisNet.QuickMove(loc));
             return true;
         }
@@ -924,7 +1055,8 @@ public class TarkovScreen extends Screen {
         heldFrom = p == null ? loc : loc.kind() == Loc.GRID ? Loc.grid(GridId.values()[loc.a()], p.x, p.y) : Loc.container(loc.a(), p.x, p.y);
         held = stack;
         heldRot = p != null && p.rotated;
-        heldCount = hasShiftDown() && stack.getCount() > 1 ? stack.getCount() / 2 : 0;
+        // Right-click picks up half (the bigger half), like vanilla.
+        heldCount = button == 1 && stack.getCount() > 1 ? (stack.getCount() + 1) / 2 : 0;
         return true;
     }
 
@@ -950,10 +1082,21 @@ public class TarkovScreen extends Screen {
         int cell = cellAt(x, y);
         if (cell >= 0) {
             if (!held.isEmpty()) {
-                int n = button == 1 ? 1 : heldCount;
-                if (!(heldFrom.kind() == Loc.CRAFT && heldFrom.a() == cell)) {
-                    ClientPlayNetworking.send(new TetrisNet.Move(heldFrom, Loc.craft(cell), false, n));
+                if (heldFrom.kind() == Loc.CRAFT && heldFrom.a() == cell) {
+                    dropHeld();
+                    return true;
                 }
+                if (button == 1) {
+                    int carrying = heldCount > 0 ? heldCount : held.getCount();
+                    ClientPlayNetworking.send(new TetrisNet.Move(heldFrom, Loc.craft(cell), false, 1));
+                    if (carrying - 1 <= 0) {
+                        dropHeld();
+                    } else {
+                        heldCount = carrying - 1;
+                    }
+                    return true;
+                }
+                ClientPlayNetworking.send(new TetrisNet.Move(heldFrom, Loc.craft(cell), false, heldCount));
                 dropHeld();
                 return true;
             }
@@ -1051,6 +1194,16 @@ public class TarkovScreen extends Screen {
             int[] s = ItemSize.of(held);
             if (s[0] != s[1]) {
                 heldRot = !heldRot;
+            }
+            return true;
+        }
+        if (tab == GEAR && held.isEmpty() && minecraft.options.keyDrop.matches(keyCode, scanCode)) {
+            // Q drops one of the hovered item, Ctrl+Q the whole stack.
+            double mx = minecraft.mouseHandler.xpos() * width / minecraft.getWindow().getScreenWidth();
+            double my = minecraft.mouseHandler.ypos() * height / minecraft.getWindow().getScreenHeight();
+            Loc loc = locAt(vx(mx), vy(my));
+            if (loc != null && !stackAt(loc).isEmpty()) {
+                ClientPlayNetworking.send(new TetrisNet.Move(loc, Loc.discard(), false, hasControlDown() ? 0 : 1));
             }
             return true;
         }

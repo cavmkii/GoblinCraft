@@ -14,6 +14,9 @@ import org.lwjgl.glfw.GLFW;
 public final class ClientTarkov {
     public static TarkovNet.RaidState raid = new TarkovNet.RaidState(0, 0, 0, -1);
 
+    public static TarkovNet.Banner banner;
+    public static long bannerAt;
+
     public static TarkovNet.BodySync body = new TarkovNet.BodySync(new float[] {1, 1, 1, 1, 1, 1, 1}, new int[7], 0);
 
     public static final KeyMapping OPEN_STATUS = new KeyMapping("key.seancraft.status", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_H,
@@ -28,6 +31,10 @@ public final class ClientTarkov {
         KeyBindingHelper.registerKeyBinding(OPEN_SECURE);
         KeyBindingHelper.registerKeyBinding(OPEN_STATUS);
         ClientPlayNetworking.registerGlobalReceiver(TarkovNet.BodySync.TYPE, (payload, ctx) -> body = payload);
+        ClientPlayNetworking.registerGlobalReceiver(TarkovNet.Banner.TYPE, (payload, ctx) -> {
+            banner = payload;
+            bannerAt = net.minecraft.Util.getMillis();
+        });
         ClientPlayNetworking.registerGlobalReceiver(TarkovNet.RaidState.TYPE, (payload, ctx) -> raid = payload);
         ClientPlayNetworking.registerGlobalReceiver(TarkovNet.HideoutView.TYPE, (payload, ctx) -> {
             Minecraft mc = ctx.client();
