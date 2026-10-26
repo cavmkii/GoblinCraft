@@ -181,6 +181,16 @@ public final class Tetris {
             action(ctx.player(), p.action());
             sync(ctx.player());
         });
+        ServerPlayNetworking.registerGlobalReceiver(TetrisNet.Track.TYPE, (p, ctx) -> {
+            InvData d = data(ctx.player());
+            d.tracked.clear();
+            p.entries().stream().limit(6).forEach(d.tracked::add);
+            sync(ctx.player());
+        });
+        ServerPlayNetworking.registerGlobalReceiver(TetrisNet.ContainerName.TYPE, (p, ctx) -> {
+            rename(ctx.player(), p.index(), p.name());
+            sync(ctx.player());
+        });
         ServerPlayNetworking.registerGlobalReceiver(TetrisNet.ContainerAction.TYPE, (p, ctx) -> {
             containerAction(ctx.player(), p.index(), p.action(), p.value());
             sync(ctx.player());
@@ -249,6 +259,9 @@ public final class Tetris {
                 rt.dirty = true;
             }
             refillHotbar(player, rt, data);
+            if (server.getTickCount() % 100 == player.getId() % 100) {
+                discoverRecipes(player);
+            }
             // Empty the vanilla main slots into the grids.
             Inventory inv = player.getInventory();
             for (int i = Inventory.getSelectionSize(); i < inv.items.size(); i++) {
@@ -358,6 +371,35 @@ public final class Tetris {
         return ItemStack.EMPTY;
     }
 
+    /**
+     * Like vanilla, a recipe is discovered once you carry one of its ingredients. Vanilla only does this through
+     * advancements for its own recipes; this covers every crafting recipe, including this mod's.
+     */
+    private static void discoverRecipes(ServerPlayer player) {
+        List<ItemStack> carried = carried(player);
+        List<RecipeHolder<?>> found = new ArrayList<>();
+        for (RecipeHolder<CraftingRecipe> holder : player.server.getRecipeManager().getAllRecipesFor(RecipeType.CRAFTING)) {
+            if (player.getRecipeBook().contains(holder)) {
+                continue;
+            }
+            outer:
+            for (Ingredient ing : holder.value().getIngredients()) {
+                if (ing.isEmpty()) {
+                    continue;
+                }
+                for (ItemStack s : carried) {
+                    if (!s.isEmpty() && ing.test(s)) {
+                        found.add(holder);
+                        break outer;
+                    }
+                }
+            }
+        }
+        if (!found.isEmpty()) {
+            player.awardRecipes(found);
+        }
+    }
+
     /** Drops emptied stacks from the grids. True if anything changed. */
     private static boolean purge(InvData data) {
         boolean changed = false;
@@ -382,13 +424,14 @@ public final class Tetris {
                 for (int slot : g.overflow) {
                     overflow.add(c.container.getItem(slot).copy());
                 }
-                views.add(new TetrisNet.ContainerView(c.pos, c.name, g.width, g.height, g.view(), overflow, List.copyOf(g.overflow), g.filter()));
+                ItemStack icon = new ItemStack(player.level().getBlockState(c.pos).getBlock().asItem());
+                views.add(new TetrisNet.ContainerView(c.pos, c.name, g.width, g.height, g.view(), overflow, List.copyOf(g.overflow), g.filter(), icon));
             }
         }
         // Copies: on a single-player server the payload object reaches the client as is.
         ServerPlayNetworking.send(player, new TetrisNet.Sync(d.rig.copy(), d.backpack.copy(), copy(d.pockets), copy(d.rigItems),
                 copy(d.backpackItems), copy(d.pouch), tarkov.tier.width, tarkov.tier.height,
-                d.unsorted.stream().map(ItemStack::copy).toList(), home != null, views, d.autoRefill, d.refillFromStash));
+                d.unsorted.stream().map(ItemStack::copy).toList(), home != null, views, d.autoRefill, d.refillFromStash, List.copyOf(d.tracked)));
     }
 
     private static List<Placed> copy(List<Placed> list) {
@@ -568,8 +611,7 @@ public final class Tetris {
                         holderPos = other;
                     }
                 }
-                String name = c instanceof CompoundContainer ? "Large Chest"
-                        : level.getBlockEntity(rt.container) instanceof BaseContainerBlockEntity be ? be.getDisplayName().getString() : "Container";
+                String name = containerName(level, rt.container, covered);
                 BlockEntity holder = level.getBlockEntity(holderPos);
                 if (holder != null) {
                     out.add(new Shown(rt.container, name, c, holder));
@@ -580,12 +622,48 @@ public final class Tetris {
         if (home != null) {
             for (Container c : Stash.containers(level, home)) {
                 if (c instanceof BlockEntity be && !covered.contains(be.getBlockPos())) {
-                    String name = be instanceof BaseContainerBlockEntity base ? base.getDisplayName().getString() : "Chest";
-                    out.add(new Shown(be.getBlockPos(), "Stash: " + name, c, be));
+                    out.add(new Shown(be.getBlockPos(), containerName(level, be.getBlockPos(), Set.of(be.getBlockPos())), c, be));
                 }
             }
         }
         return out;
+    }
+
+    /** A container's custom name if either half has one, else its default ("Large Chest" for a double). */
+    private static String containerName(ServerLevel level, BlockPos pos, Set<BlockPos> halves) {
+        for (BlockPos p : halves) {
+            if (level.getBlockEntity(p) instanceof BaseContainerBlockEntity be && be.getCustomName() != null) {
+                return be.getCustomName().getString();
+            }
+        }
+        if (halves.size() > 1) {
+            return "Large Chest";
+        }
+        return level.getBlockEntity(pos) instanceof BaseContainerBlockEntity be ? be.getDisplayName().getString() : "Container";
+    }
+
+    /** Renames a container (both halves of a double chest). Blank goes back to the default name. */
+    static void rename(ServerPlayer player, int index, String name) {
+        List<Shown> shown = containers(player);
+        if (index < 0 || index >= shown.size()) {
+            return;
+        }
+        BlockPos pos = shown.get(index).pos;
+        ServerLevel level = player.serverLevel();
+        Set<BlockPos> halves = new HashSet<>();
+        halves.add(pos);
+        BlockState state = level.getBlockState(pos);
+        if (state.getBlock() instanceof ChestBlock && state.getValue(ChestBlock.TYPE) != ChestType.SINGLE) {
+            halves.add(pos.relative(ChestBlock.getConnectedDirection(state)));
+        }
+        String clean = name.strip();
+        for (BlockPos p : halves) {
+            if (level.getBlockEntity(p) instanceof BaseContainerBlockEntity be) {
+                ((com.cavmkii.seancraft.mixin.ContainerNameAccessor) be).seancraft$setName(clean.isEmpty() ? null : Component.literal(clean));
+                be.setChanged();
+            }
+        }
+        rt(player).dirty = true;
     }
 
     private static Container containerAt(ServerPlayer player, BlockPos pos) {

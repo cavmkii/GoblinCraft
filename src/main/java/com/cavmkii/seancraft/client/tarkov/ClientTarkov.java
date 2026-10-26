@@ -54,6 +54,7 @@ public final class ClientTarkov {
         });
         HudRenderCallback.EVENT.register(RaidHud::render);
         HudRenderCallback.EVENT.register(HeartCapHud::render);
+        HudRenderCallback.EVENT.register(ClientTracker::render);
         ClientTetris.init();
     }
 }

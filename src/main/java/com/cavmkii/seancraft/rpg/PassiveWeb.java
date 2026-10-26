@@ -151,7 +151,7 @@ public final class PassiveWeb {
                 case 0 -> new WebNode(id, k, archetype, "Precision", x, y, null).stat(Stat.CRIT_CHANCE, 10);
                 case 1 -> new WebNode(id, k, archetype, "Footwork", x, y, null).stat(Stat.MOVE_SPEED, 5).stat(Stat.ATTACK_SPEED, 5);
                 case 2 -> new WebNode(id, k, archetype, "Momentum", x, y, null).stat(Stat.RAGE_GAIN, 50).stat(Stat.STAMINA_REGEN, 20);
-                default -> new WebNode(id, k, archetype, "Duelist's Edge", x, y, null).stat(Stat.MELEE_DAMAGE, 10).stat(Stat.CRIT_CHANCE, 5);
+                default -> new WebNode(id, k, archetype, "Duelist's Edge", x, y, null).stat(Stat.MELEE_DAMAGE, 10).stat(Stat.CRIT_CHANCE, 5).stat(Stat.CRIT_DAMAGE, 15);
             };
             case RANGER -> switch (index) {
                 case 0 -> new WebNode(id, k, archetype, "Fleet Foot", x, y, null).stat(Stat.MOVE_SPEED, 8);
@@ -186,7 +186,7 @@ public final class PassiveWeb {
             case WARRIOR -> new WebNode(id, k, archetype, "Juggernaut", x, y, null)
                     .stat(Stat.MAX_HEALTH, 40).stat(Stat.KNOCKBACK_RES, 50).stat(Stat.MOVE_SPEED, -15);
             case DUELIST -> new WebNode(id, k, archetype, "Bladedancer", x, y, null)
-                    .stat(Stat.ATTACK_SPEED, 30).stat(Stat.CRIT_CHANCE, 10).stat(Stat.ARMOR, -6);
+                    .stat(Stat.ATTACK_SPEED, 30).stat(Stat.CRIT_CHANCE, 10).stat(Stat.CRIT_DAMAGE, 30).stat(Stat.ARMOR, -6);
             case RANGER -> new WebNode(id, k, archetype, "Wind Walker", x, y, null)
                     .stat(Stat.NO_FALL, 1).stat(Stat.MOVE_SPEED, 15).stat(Stat.MAX_HEALTH, -20);
             case SHADOW -> new WebNode(id, k, archetype, "Ghost", x, y, null)

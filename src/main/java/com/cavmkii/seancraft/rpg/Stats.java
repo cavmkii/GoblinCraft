@@ -62,6 +62,10 @@ public final class Stats {
     public double moveSpeedPct() { return agi() * 0.25 + get(Stat.MOVE_SPEED); }
     public double bonusArmor() { return agi() * 0.08 + get(Stat.ARMOR); }
     public double primaryDamage() { return attr(primary) * 0.04; }
+    /** Percent chance for a melee or projectile hit to crit: 5% base, Agility and nodes add to it. */
+    public double critChance() { return Math.min(75, 5 + agi() * 0.3 + get(Stat.CRIT_CHANCE)); }
+    /** Extra damage a crit does, in percent: +50% base, Strength and nodes add to it. */
+    public double critDamage() { return 50 + str() * 0.5 + get(Stat.CRIT_DAMAGE); }
     public double spellPowerPct() { return intel() * 1.0 + get(Stat.SPELL_DAMAGE); }
 
     public float maxMana() { return (float) ((50 + intel() * 3) * (1 + get(Stat.MANA) / 100)); }

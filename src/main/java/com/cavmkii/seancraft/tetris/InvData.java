@@ -26,6 +26,8 @@ public final class InvData {
     public boolean autoRefill = true;
     /** ...and from the stash too, when in a hideout. */
     public boolean refillFromStash;
+    /** Gather tracker: "item id=goal" entries shown on the HUD while you're out. */
+    public final List<String> tracked = new ArrayList<>();
 
     public static final Codec<InvData> CODEC = RecordCodecBuilder.create(i -> i.group(
             ItemStack.OPTIONAL_CODEC.optionalFieldOf("rig", ItemStack.EMPTY).forGetter(d -> d.rig),
@@ -37,8 +39,9 @@ public final class InvData {
             ItemStack.CODEC.listOf().optionalFieldOf("unsorted", List.of()).forGetter(d -> d.unsorted),
             Codec.BOOL.optionalFieldOf("migrated", false).forGetter(d -> d.migrated),
             Codec.BOOL.optionalFieldOf("autoRefill", true).forGetter(d -> d.autoRefill),
-            Codec.BOOL.optionalFieldOf("refillFromStash", false).forGetter(d -> d.refillFromStash)
-    ).apply(i, (rig, backpack, pockets, rigItems, backpackItems, pouch, unsorted, migrated, refill, refillStash) -> {
+            Codec.BOOL.optionalFieldOf("refillFromStash", false).forGetter(d -> d.refillFromStash),
+            Codec.STRING.listOf().optionalFieldOf("tracked", List.of()).forGetter(d -> d.tracked)
+    ).apply(i, (rig, backpack, pockets, rigItems, backpackItems, pouch, unsorted, migrated, refill, refillStash, tracked) -> {
         InvData d = new InvData();
         d.rig = rig;
         d.backpack = backpack;
@@ -50,6 +53,7 @@ public final class InvData {
         d.migrated = migrated;
         d.autoRefill = refill;
         d.refillFromStash = refillStash;
+        d.tracked.addAll(tracked);
         return d;
     }));
 

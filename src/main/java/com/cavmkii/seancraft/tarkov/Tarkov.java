@@ -443,7 +443,7 @@ public final class Tarkov {
                 int carry = Math.min(missing, Stash.count(player, h, cost));
                 complete &= missing == 0;
                 canGive |= carry > 0;
-                costs.add(new TarkovNet.CostLine(cost.label(), id(cost.icon()), put, cost.count(), carry));
+                costs.add(new TarkovNet.CostLine(cost.label(), id(cost.icon()), put, cost.count(), carry, track(cost)));
             }
             int status;
             String note;
@@ -553,7 +553,7 @@ public final class Tarkov {
     private static List<TarkovNet.CostLine> costLines(ServerPlayer player, Hideouts.Hideout h, List<Cost> costs) {
         List<TarkovNet.CostLine> lines = new ArrayList<>();
         for (Cost cost : costs) {
-            lines.add(new TarkovNet.CostLine(cost.label(), id(cost.icon()), Stash.count(player, h, cost), cost.count(), 0));
+            lines.add(new TarkovNet.CostLine(cost.label(), id(cost.icon()), Stash.count(player, h, cost), cost.count(), 0, track(cost)));
         }
         return lines;
     }
@@ -593,6 +593,11 @@ public final class Tarkov {
 
     private static String id(net.minecraft.world.item.Item item) {
         return BuiltInRegistries.ITEM.getKey(item).toString();
+    }
+
+    /** What the gather list follows for a cost: the item, or {@code #tag} when any of a kind will do. */
+    private static String track(Cost cost) {
+        return cost.item() != null ? id(cost.item()) : "#" + cost.tag().location();
     }
 
     static String clock(long ticks) {

@@ -16,6 +16,7 @@ import net.minecraft.world.item.ItemStack;
 /** The Hideout Bench: MODULES to build and upgrade, CRAFT for hideout-only items. Materials come from you and the stash. */
 public class HideoutScreen extends Screen {
     private static final int ROW = 46;
+    private static final int TRACK_W = 40;
 
     final BlockPos pos;
     private TarkovNet.HideoutView view;
@@ -116,7 +117,7 @@ public class HideoutScreen extends Screen {
         g.pose().pushPose();
         g.pose().translate(x + 24, y + 15, 0);
         g.pose().scale(0.75f, 0.75f, 1);
-        g.drawString(font, font.plainSubstrByWidth(e.subtitle(), (int) ((w - 110) / 0.75)), 0, 0, 0xFFAAAAAA, false);
+        g.drawString(font, font.plainSubstrByWidth(e.subtitle(), (int) ((w - 156) / 0.75)), 0, 0, 0xFFAAAAAA, false);
         g.pose().popPose();
 
         // Costs: icon and have/need, red when short.
@@ -151,6 +152,12 @@ public class HideoutScreen extends Screen {
             default -> "LOCKED";
         };
         g.drawString(font, label, bx + (78 - font.width(label)) / 2, by + 5, ready ? 0xFFFFFFFF : 0xFF888888, false);
+        if (trackable(e)) {
+            int tx = bx - TRACK_W - 4;
+            boolean th = mouseX >= tx && mouseX < tx + TRACK_W && mouseY >= by && mouseY < by + 18;
+            g.fill(tx, by, tx + TRACK_W, by + 18, th ? 0xFF4A4A58 : 0xFF2E2E38);
+            g.drawString(font, "TRACK", tx + (TRACK_W - font.width("TRACK")) / 2, by + 5, 0xFFE0C060, false);
+        }
         if (e.status() == TarkovNet.Entry.BUILDING) {
             g.fill(bx, by + 18, bx + 78 * e.progress() / 100, by + 20, 0xFFE0C060);
         }
@@ -160,6 +167,27 @@ public class HideoutScreen extends Screen {
         g.drawString(font, font.plainSubstrByWidth(e.note(), (int) (100 / 0.75)), 0, 0,
                 ready ? 0xFF7CFC7C : e.status() == TarkovNet.Entry.MAXED ? 0xFFE0C060 : 0xFFFF9966, false);
         g.pose().popPose();
+    }
+
+    /** Anything still missing, on something you can still build or craft. */
+    private static boolean trackable(TarkovNet.Entry e) {
+        if (e.status() == TarkovNet.Entry.MAXED || e.status() == TarkovNet.Entry.BUILDING) {
+            return false;
+        }
+        return e.costs().stream().anyMatch(c -> c.have() < c.need());
+    }
+
+    /**
+     * Puts what's missing on the gather list. For a module that's what hasn't been contributed yet; for a recipe
+     * it's the full cost, since the list counts what you carry and not the stash.
+     */
+    private static void track(TarkovNet.Entry e) {
+        for (TarkovNet.CostLine c : e.costs()) {
+            int amount = e.kind() == TarkovNet.Entry.MODULE ? c.need() - c.have() : c.need();
+            if (amount > 0) {
+                ClientTracker.add(c.track(), amount);
+            }
+        }
     }
 
     private static Item item(String id) {
@@ -187,6 +215,13 @@ public class HideoutScreen extends Screen {
                 int bx = x0 + panelWidth() - 84;
                 if ((e.status() == TarkovNet.Entry.READY || e.status() == TarkovNet.Entry.GIVE) && mouseX >= bx && mouseX < bx + 78 && mouseY >= y + 6 && mouseY < y + 24) {
                     ClientPlayNetworking.send(new TarkovNet.HideoutAction(pos, e.kind(), e.id()));
+                    return true;
+                }
+                int tx = bx - TRACK_W - 4;
+                if (trackable(e) && mouseX >= tx && mouseX < tx + TRACK_W && mouseY >= y + 6 && mouseY < y + 24) {
+                    track(e);
+                    net.minecraft.client.Minecraft.getInstance().getSoundManager().play(
+                            net.minecraft.client.resources.sounds.SimpleSoundInstance.forUI(net.minecraft.sounds.SoundEvents.UI_BUTTON_CLICK, 1f));
                     return true;
                 }
             }
