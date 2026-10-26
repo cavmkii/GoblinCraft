@@ -16,7 +16,7 @@ public final class TarkovNet {
         return new CustomPacketPayload.Type<>(SeanCraft.id(name));
     }
 
-    /** Server to client once a second: 0 unknown, 1 hideout, 2 raid; raid time, threat, seconds to next threat (-1 none). */
+    /** Server to client once a second: 0 unknown, 1 hideout, 2 raid, 3 spawn safe zone; raid time, threat, seconds to next threat (-1 none). */
     public record RaidState(int state, int raidSeconds, int threat, int nextThreat) implements CustomPacketPayload {
         public static final Type<RaidState> TYPE = payloadType("raid_state");
         public static final StreamCodec<FriendlyByteBuf, RaidState> CODEC = StreamCodec.of((buf, p) -> {
@@ -117,6 +117,14 @@ public final class TarkovNet {
         @Override public Type<HideoutAction> type() { return TYPE; }
     }
 
+    /** Client to server: cure a status effect with a carried item (index into Tetris.carried). */
+    public record CureEffect(String effect, int slot) implements CustomPacketPayload {
+        public static final Type<CureEffect> TYPE = payloadType("cure_effect");
+        public static final StreamCodec<FriendlyByteBuf, CureEffect> CODEC =
+                StreamCodec.of((buf, p) -> { buf.writeUtf(p.effect); buf.writeVarInt(p.slot); }, buf -> new CureEffect(buf.readUtf(), buf.readVarInt()));
+        @Override public Type<CureEffect> type() { return TYPE; }
+    }
+
     /** Server to client: body-part health, conditions and painkiller time. */
     public record BodySync(float[] body, int[] conditions, int painkillerTicks) implements CustomPacketPayload {
         public static final Type<BodySync> TYPE = payloadType("body_sync");
@@ -149,6 +157,7 @@ public final class TarkovNet {
     static void register() {
         PayloadTypeRegistry.playS2C().register(BodySync.TYPE, BodySync.CODEC);
         PayloadTypeRegistry.playC2S().register(TreatPart.TYPE, TreatPart.CODEC);
+        PayloadTypeRegistry.playC2S().register(CureEffect.TYPE, CureEffect.CODEC);
         PayloadTypeRegistry.playS2C().register(RaidState.TYPE, RaidState.CODEC);
         PayloadTypeRegistry.playS2C().register(HideoutView.TYPE, HideoutView.CODEC);
         PayloadTypeRegistry.playC2S().register(HideoutAction.TYPE, HideoutAction.CODEC);

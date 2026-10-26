@@ -85,7 +85,7 @@ public final class Cfg {
     public static double babyHealthScale = 0.35;
     public static double babyDamageScale = 0.5;
 
-    // Raid (TarkoValheim)
+    // Raid
     public enum DeathRule { VANILLA, KEEP_SECURE, LOSE_EVERYTHING }
     public static DeathRule raidDeathRule = DeathRule.LOSE_EVERYTHING;
     public static double hideoutRadius = 30;
@@ -93,6 +93,10 @@ public final class Cfg {
     public static boolean huntingParties = true;
     public static double calmMinutes = 5;
     public static double threatStepMinutes = 5;
+    public static int spawnPoints = 3;
+    public static double spawnDistance = 400;
+    public static double spawnRadius = 24;
+    public static double spawnRefillMinutes = 30;
 
     // Fight
     public static double fightTriggerRange = 35;
@@ -131,7 +135,7 @@ public final class Cfg {
         s("Scaling", "Mode", "What 'player level' means for Joe's scaling. SKILLS = highest XP level among players within 80 blocks. BOSSES = progression advancements earned by any online player. HIGHEST = whichever is greater.",
                 v -> scaling = ScalingMode.valueOf(v.trim().toUpperCase(Locale.ROOT)), () -> scaling.name());
         i("Scaling", "SkillsMaxLevel", "XP level that counts as maximum for SKILLS scaling.", v -> skillsMaxLevel = v, () -> skillsMaxLevel);
-        s("Scaling", "BossAdvancements", "Comma-separated advancements that stand in for Valheim's bosses in BOSSES scaling.", v -> bossAdvancements = v, () -> bossAdvancements);
+        s("Scaling", "BossAdvancements", "Comma-separated advancements that count as boss progress in BOSSES scaling.", v -> bossAdvancements = v, () -> bossAdvancements);
         d("Scaling", "HealthMultiplierMin", "Joe's health multiplier at level 0.", v -> healthMultMin = v, () -> healthMultMin);
         d("Scaling", "HealthMultiplierMax", "Joe's health multiplier at max level.", v -> healthMultMax = v, () -> healthMultMax);
         d("Scaling", "DamageMultiplierMin", "Joe's damage multiplier at level 0.", v -> damageMultMin = v, () -> damageMultMin);
@@ -163,6 +167,10 @@ public final class Cfg {
         b("Raid", "Hostility", "Threat rises the longer you stay out: elite mobs and hunting parties.", v -> raidHostility = v, () -> raidHostility);
         b("Raid", "HuntingParties", "Send hunting parties at raiding players as threat rises.", v -> huntingParties = v, () -> huntingParties);
         d("Raid", "CalmMinutes", "Minutes at the start of a raid before threat starts rising.", v -> calmMinutes = v, () -> calmMinutes);
+        i("Spawn", "Points", "Fixed spawn points (with a supply shelter) built in a new world. 0 turns them off. Only read when the world is first started.", v -> spawnPoints = v, () -> spawnPoints);
+        d("Spawn", "Distance", "How far the other spawn points are from world spawn (blocks).", v -> spawnDistance = v, () -> spawnDistance);
+        d("Spawn", "Radius", "Safe radius around each spawn point: no raid starts until you leave it.", v -> spawnRadius = v, () -> spawnRadius);
+        d("Spawn", "RefillMinutes", "Empty spawn chests are restocked after this long.", v -> spawnRefillMinutes = v, () -> spawnRefillMinutes);
         d("Raid", "ThreatStepMinutes", "Minutes between threat levels (max 4).", v -> threatStepMinutes = v, () -> threatStepMinutes);
 
         d("Fight", "TriggerRange", "Joe and Sean start fighting when this close (blocks).", v -> fightTriggerRange = v, () -> fightTriggerRange);

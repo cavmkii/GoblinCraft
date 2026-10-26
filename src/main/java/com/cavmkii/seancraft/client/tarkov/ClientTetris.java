@@ -45,6 +45,12 @@ public final class ClientTetris {
                 mc.setScreen(new TarkovScreen(payload.tab()));
             }
         });
+        // The vanilla tutorial (open inventory, craft planks) can't see the grids, so its toasts would never clear.
+        net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.JOIN.register((handler, sender, mc) -> {
+            if (mc.options.tutorialStep != net.minecraft.client.tutorial.TutorialSteps.NONE) {
+                mc.getTutorial().setStep(net.minecraft.client.tutorial.TutorialSteps.NONE);
+            }
+        });
         // Before vanilla handles keys: in survival, E opens the Tarkov screen. Riding something with its own
         // inventory (horse, chest boat) keeps the vanilla behaviour.
         ClientTickEvents.START_CLIENT_TICK.register(mc -> {

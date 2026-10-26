@@ -3,7 +3,7 @@
   "id": "seancraft",
   "version": "${version}",
   "name": "SeanCraft",
-  "description": "Joe the goblin, Sean the travelling merchant and the Baby Wars, plus a PoE-style passive web, Valheim skills, and TarkoValheim raids, hideouts, body health, modular gear and a Tetris inventory.",
+  "description": "Survival as a raid game: safe spawns and hideouts, losing your kit when you die out there, a Tetris inventory, body-part health, gear built from parts, a passive tree and use-skills, plus Joe and Sean.",
   "authors": ["cavmkii"],
   "contact": {
     "sources": "https://github.com/cavmkii/SeanCraft"

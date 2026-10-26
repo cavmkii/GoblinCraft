@@ -24,6 +24,8 @@ public record HideoutRecipe(String id, Supplier<ItemStack> result, List<Cost> co
         gear(GearSpec.PACK_SCAV, Module.WORKSHOP, 1, Cost.of(Items.LEATHER, 12), Cost.of(Items.STRING, 8), Cost.of(Items.IRON_INGOT, 2));
         gear(GearSpec.RIG_CARRIER, Module.WORKSHOP, 2, Cost.of(Items.LEATHER, 10), Cost.of(Items.STRING, 6), Cost.of(Items.IRON_INGOT, 6));
         gear(GearSpec.PACK_PILGRIM, Module.WORKSHOP, 3, Cost.of(Items.LEATHER, 24), Cost.of(Items.STRING, 12), Cost.of(Items.GOLD_INGOT, 4));
+        ALL.add(new HideoutRecipe("antidote", () -> new ItemStack(TarkovContent.ANTIDOTE),
+                List.of(Cost.of(Items.HONEY_BOTTLE, 1), Cost.of(Items.SUGAR, 2), Cost.of(Items.BROWN_MUSHROOM, 1)), Module.MEDSTATION, 1));
         for (Med med : Med.values()) {
             ALL.add(new HideoutRecipe(med.id, () -> new ItemStack(TarkovContent.MEDS.get(med)), med.costs, med.gate, med.gateLevel));
         }

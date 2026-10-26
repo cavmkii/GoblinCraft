@@ -124,6 +124,7 @@ public final class Tetris {
 
     public static void init() {
         TetrisNet.register();
+        ContainerGrid.init();
         ServerTickEvents.END_SERVER_TICK.register(Tetris::tick);
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> rt(handler.player).dirty = true);
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> RUNTIME.remove(handler.player.getUUID()));
@@ -285,11 +286,12 @@ public final class Tetris {
         Hideouts.Hideout home = Hideouts.at(player.serverLevel(), player.position());
         if (rt.open || rt.container != null) {
             for (Shown c : containers(player)) {
-                List<ItemStack> stacks = new ArrayList<>();
-                for (int i = 0; i < c.container.getContainerSize(); i++) {
-                    stacks.add(c.container.getItem(i).copy());
+                ContainerGrid g = c.grid();
+                List<ItemStack> overflow = new ArrayList<>();
+                for (int slot : g.overflow) {
+                    overflow.add(c.container.getItem(slot).copy());
                 }
-                views.add(new TetrisNet.ContainerView(c.pos, c.name, stacks));
+                views.add(new TetrisNet.ContainerView(c.pos, c.name, g.width, g.height, g.view(), overflow, List.copyOf(g.overflow)));
             }
         }
         // Copies: on a single-player server the payload object reaches the client as is.
@@ -431,7 +433,12 @@ public final class Tetris {
 
     // ================================================================== containers
 
-    record Shown(BlockPos pos, String name, Container container) {}
+    /** A container on the right of GEAR. {@code holder} keeps its grid layout (for a double chest, one fixed half). */
+    record Shown(BlockPos pos, String name, Container container, BlockEntity holder) {
+        ContainerGrid grid() {
+            return ContainerGrid.of(container, holder);
+        }
+    }
 
     /** The opened container and, in a hideout, every stash chest. Same order as the client sees. */
     static List<Shown> containers(ServerPlayer player) {
@@ -444,12 +451,20 @@ public final class Tetris {
             if (c != null) {
                 BlockState state = level.getBlockState(rt.container);
                 covered.add(rt.container);
+                BlockPos holderPos = rt.container;
                 if (state.getBlock() instanceof ChestBlock && state.getValue(ChestBlock.TYPE) != ChestType.SINGLE) {
-                    covered.add(rt.container.relative(ChestBlock.getConnectedDirection(state)));
+                    BlockPos other = rt.container.relative(ChestBlock.getConnectedDirection(state));
+                    covered.add(other);
+                    if (other.asLong() < holderPos.asLong()) {
+                        holderPos = other;
+                    }
                 }
                 String name = c instanceof CompoundContainer ? "Large Chest"
                         : level.getBlockEntity(rt.container) instanceof BaseContainerBlockEntity be ? be.getDisplayName().getString() : "Container";
-                out.add(new Shown(rt.container, name, c));
+                BlockEntity holder = level.getBlockEntity(holderPos);
+                if (holder != null) {
+                    out.add(new Shown(rt.container, name, c, holder));
+                }
             }
         }
         Hideouts.Hideout home = Hideouts.at(level, player.position());
@@ -457,7 +472,7 @@ public final class Tetris {
             for (Container c : Stash.containers(level, home)) {
                 if (c instanceof BlockEntity be && !covered.contains(be.getBlockPos())) {
                     String name = be instanceof BaseContainerBlockEntity base ? base.getDisplayName().getString() : "Chest";
-                    out.add(new Shown(be.getBlockPos(), "Stash: " + name, c));
+                    out.add(new Shown(be.getBlockPos(), "Stash: " + name, c, be));
                 }
             }
         }
@@ -499,24 +514,12 @@ public final class Tetris {
         ServerPlayNetworking.send(player, new TetrisNet.Open(0));
     }
 
-    /** Puts a stack into a container: top up first, then empty slots. Leaves the rest in the stack. */
-    private static void storeIn(Container c, ItemStack stack) {
-        for (int i = 0; i < c.getContainerSize() && !stack.isEmpty(); i++) {
-            ItemStack s = c.getItem(i);
-            if (ItemStack.isSameItemSameComponents(s, stack)) {
-                int n = Math.min(stack.getCount(), Math.min(c.getMaxStackSize(), s.getMaxStackSize()) - s.getCount());
-                if (n > 0) {
-                    s.grow(n);
-                    stack.shrink(n);
-                }
-            }
-        }
-        for (int i = 0; i < c.getContainerSize() && !stack.isEmpty(); i++) {
-            if (c.getItem(i).isEmpty() && c.canPlaceItem(i, stack)) {
-                c.setItem(i, stack.split(Math.min(c.getMaxStackSize(), stack.getMaxStackSize())));
-            }
-        }
-        c.setChanged();
+    /** Puts a stack into a container's grid: top up first, then wherever it fits. Leaves the rest in the stack. */
+    private static void storeIn(Shown c, ItemStack stack) {
+        ContainerGrid g = c.grid();
+        g.insertAuto(stack);
+        g.save();
+        c.container.setChanged();
     }
 
     // ================================================================== moving
@@ -587,13 +590,20 @@ public final class Tetris {
                     return null;
                 }
                 Container c = shown.get(loc.a()).container;
-                if (loc.b() < 0 || loc.b() >= c.getContainerSize()) {
+                ContainerGrid g = shown.get(loc.a()).grid();
+                // b = -1: an overflow item, by raw slot (c). Otherwise the grid cell (b, c).
+                int slot = loc.b() == -1 ? loc.c() : g.slotAt(loc.b(), loc.c());
+                if (slot < 0 || slot >= c.getContainerSize() || c.getItem(slot).isEmpty()) {
                     return null;
                 }
                 return new Ref() {
-                    public ItemStack get() { return c.getItem(loc.b()); }
+                    public ItemStack get() { return c.getItem(slot); }
                     public void set(ItemStack s) {
-                        c.setItem(loc.b(), s);
+                        c.setItem(slot, s);
+                        if (s.isEmpty()) {
+                            g.forget(slot);
+                        }
+                        g.save();
                         c.setChanged();
                     }
                 };
@@ -693,18 +703,19 @@ public final class Tetris {
                 player.drop(stack.copyAndClear(), false, true);
                 return stack;
             }
-            case Loc.HAND, Loc.EQUIP, Loc.CONTAINER -> {
-                Container container = null;
-                if (to.kind() == Loc.CONTAINER) {
-                    List<Shown> shown = containers(player);
-                    if (to.a() < 0 || to.a() >= shown.size()) {
-                        return stack;
-                    }
-                    container = shown.get(to.a()).container;
-                    if (to.b() < 0 || to.b() >= container.getContainerSize() || !container.canPlaceItem(to.b(), stack)) {
-                        return stack;
-                    }
+            case Loc.CONTAINER -> {
+                List<Shown> shown = containers(player);
+                if (to.a() < 0 || to.a() >= shown.size() || to.b() < 0) {
+                    return stack;
                 }
+                ContainerGrid g = shown.get(to.a()).grid();
+                g.insertAt(stack, to.b(), to.c(), rotated);
+                g.save();
+                g.container.setChanged();
+                return stack;
+            }
+            case Loc.HAND, Loc.EQUIP -> {
+                Container container = null;
                 if (!accepts(player, to, stack)) {
                     return stack;
                 }
@@ -736,7 +747,7 @@ public final class Tetris {
     }
 
     private static boolean slotKind(Loc loc) {
-        return loc.kind() == Loc.HAND || loc.kind() == Loc.CONTAINER || (loc.kind() == Loc.EQUIP && loc.a() != 4 && loc.a() != 5);
+        return loc.kind() == Loc.HAND || (loc.kind() == Loc.EQUIP && loc.a() != 4 && loc.a() != 5);
     }
 
     static void move(ServerPlayer player, Loc from, Loc to, boolean rotated, int count) {
@@ -756,6 +767,20 @@ public final class Tetris {
         }
         int n = count <= 0 ? source.getCount() : Math.min(count, source.getCount());
         boolean whole = n == source.getCount();
+        if (whole && from.kind() == Loc.CONTAINER && to.kind() == Loc.CONTAINER && from.a() == to.a() && from.b() >= 0 && to.b() >= 0) {
+            // Rearranging inside one container: just move it in the grid.
+            List<Shown> shown = containers(player);
+            ContainerGrid g = shown.get(from.a()).grid();
+            int slot = g.slotAt(from.b(), from.c());
+            int there = g.slotAt(to.b(), to.c());
+            if (slot >= 0 && (there < 0 || there == slot)) {
+                if (g.relocate(slot, to.b(), to.c(), rotated)) {
+                    g.save();
+                }
+                rt(player).dirty = true;
+                return;
+            }
+        }
         Placed self = null;
         if (whole && from.kind() == Loc.GRID) {
             self = grid(player, data, GridId.values()[from.a()]).at(from.b(), from.c());
@@ -799,7 +824,7 @@ public final class Tetris {
             List<Shown> shown = containers(player);
             if (!shown.isEmpty()) {
                 for (Shown c : shown) {
-                    storeIn(c.container, stack);
+                    storeIn(c, stack);
                     if (stack.isEmpty()) {
                         break;
                     }
@@ -849,7 +874,7 @@ public final class Tetris {
                 for (GridId id : AUTO) {
                     for (Placed p : data.list(id)) {
                         for (Shown c : shown) {
-                            storeIn(c.container, p.stack);
+                            storeIn(c, p.stack);
                             if (p.stack.isEmpty()) {
                                 break;
                             }

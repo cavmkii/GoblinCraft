@@ -17,6 +17,12 @@ public abstract class LivingEntityMixin {
         return RpgDamage.modify((LivingEntity) (Object) this, source, amount);
     }
 
+    /** Destroyed body parts lock away their share of hearts. */
+    @ModifyVariable(method = "heal", at = @At("HEAD"), argsOnly = true)
+    private float seancraft$capHeal(float amount) {
+        return com.cavmkii.seancraft.tarkov.Health.capHeal((LivingEntity) (Object) this, amount);
+    }
+
     /** Brewing skill: potions you drink last longer. */
     @ModifyVariable(method = "addEffect(Lnet/minecraft/world/effect/MobEffectInstance;Lnet/minecraft/world/entity/Entity;)Z",
             at = @At("HEAD"), argsOnly = true)

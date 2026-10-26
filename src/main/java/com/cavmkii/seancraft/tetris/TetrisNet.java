@@ -31,24 +31,39 @@ public final class TetrisNet {
         return list;
     }
 
-    /** One container shown on the right of GEAR: an opened chest, or one stash chest. */
-    public record ContainerView(BlockPos pos, String name, List<ItemStack> stacks) {
+    /**
+     * One container shown on the right of GEAR (an opened chest, or one stash chest) as a grid. Overflow: items
+     * that had no room in the grid, with their raw slots.
+     */
+    public record ContainerView(BlockPos pos, String name, int width, int height, List<Placed> items, List<ItemStack> overflow,
+            List<Integer> overflowSlots) {
         void write(RegistryFriendlyByteBuf buf) {
             buf.writeBlockPos(pos);
             buf.writeUtf(name);
-            buf.writeVarInt(stacks.size());
-            stacks.forEach(s -> ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, s));
+            buf.writeVarInt(width);
+            buf.writeVarInt(height);
+            writeList(buf, items);
+            buf.writeVarInt(overflow.size());
+            for (int i = 0; i < overflow.size(); i++) {
+                ItemStack.STREAM_CODEC.encode(buf, overflow.get(i));
+                buf.writeVarInt(overflowSlots.get(i));
+            }
         }
 
         static ContainerView read(RegistryFriendlyByteBuf buf) {
             BlockPos pos = buf.readBlockPos();
             String name = buf.readUtf();
+            int w = buf.readVarInt();
+            int h = buf.readVarInt();
+            List<Placed> items = readList(buf);
             int n = buf.readVarInt();
-            List<ItemStack> stacks = new ArrayList<>();
+            List<ItemStack> overflow = new ArrayList<>();
+            List<Integer> slots = new ArrayList<>();
             for (int i = 0; i < n; i++) {
-                stacks.add(ItemStack.OPTIONAL_STREAM_CODEC.decode(buf));
+                overflow.add(ItemStack.STREAM_CODEC.decode(buf));
+                slots.add(buf.readVarInt());
             }
-            return new ContainerView(pos, name, stacks);
+            return new ContainerView(pos, name, w, h, items, overflow, slots);
         }
     }
 

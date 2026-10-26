@@ -4,7 +4,8 @@ import net.minecraft.network.FriendlyByteBuf;
 
 /**
  * Where an item is on the GEAR tab. HAND: hotbar slot. GRID: grid and cell. EQUIP: 0-3 armor (head to feet),
- * 4 rig, 5 backpack, 6 off-hand. CONTAINER: open container (or stash chest) index and slot. DISCARD: the ground.
+ * 4 rig, 5 backpack, 6 off-hand. CONTAINER: open container (or stash chest) index and grid cell, or -1 and a raw slot
+ * for overflow. DISCARD: the ground.
  * UNSORTED: index in the unsorted list.
  */
 public record Loc(int kind, int a, int b, int c) {
@@ -18,7 +19,8 @@ public record Loc(int kind, int a, int b, int c) {
     public static Loc hand(int slot) { return new Loc(HAND, slot, 0, 0); }
     public static Loc grid(GridId id, int x, int y) { return new Loc(GRID, id.ordinal(), x, y); }
     public static Loc equip(int slot) { return new Loc(EQUIP, slot, 0, 0); }
-    public static Loc container(int index, int slot) { return new Loc(CONTAINER, index, slot, 0); }
+    public static Loc container(int index, int x, int y) { return new Loc(CONTAINER, index, x, y); }
+    public static Loc containerOverflow(int index, int slot) { return new Loc(CONTAINER, index, -1, slot); }
     public static Loc discard() { return new Loc(DISCARD, 0, 0, 0); }
     public static Loc unsorted(int index) { return new Loc(UNSORTED, index, 0, 0); }
 
