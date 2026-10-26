@@ -15,6 +15,10 @@ public record Loc(int kind, int a, int b, int c) {
     public static final int CONTAINER = 3;
     public static final int DISCARD = 4;
     public static final int UNSORTED = 5;
+    /** CRAFTING tab: a cell (a = 0-8) of the crafting grid. */
+    public static final int CRAFT = 6;
+    /** CRAFTING tab: one entry (a = index) of the merged materials list; as a target, back to your inventory. */
+    public static final int MATERIAL = 8;
 
     public static Loc hand(int slot) { return new Loc(HAND, slot, 0, 0); }
     public static Loc grid(GridId id, int x, int y) { return new Loc(GRID, id.ordinal(), x, y); }
@@ -23,6 +27,8 @@ public record Loc(int kind, int a, int b, int c) {
     public static Loc containerOverflow(int index, int slot) { return new Loc(CONTAINER, index, -1, slot); }
     public static Loc discard() { return new Loc(DISCARD, 0, 0, 0); }
     public static Loc unsorted(int index) { return new Loc(UNSORTED, index, 0, 0); }
+    public static Loc craft(int cell) { return new Loc(CRAFT, cell, 0, 0); }
+    public static Loc material(int index) { return new Loc(MATERIAL, index, 0, 0); }
 
     public void write(FriendlyByteBuf buf) {
         buf.writeVarInt(kind);

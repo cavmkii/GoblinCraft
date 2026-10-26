@@ -29,7 +29,7 @@ The inventory screen has five tabs: GEAR, CRAFTING, SKILLS, STATUS and WEB. Crea
 
 - **Spawn points.** A new world gets 3 fixed spawn points, one at world spawn and two about 400 blocks out. Each has a small shelter with 3 chests and a barrel of starting gear, and the empty ones restock every 30 minutes. New players start at a random one, and so does anyone who dies without a bed.
 - **Safe zones.** The area around a spawn point is safe, and so is your hideout. Anywhere else, you're **in raid**. The HUD in the bottom left says which one you're in.
-- **Threat.** The longer a raid goes, the worse it gets. After about 5 calm minutes the threat level climbs up to 4. Mobs start spawning as elites with more health and damage, and hunting parties come after you.
+- **Threat.** The longer a raid goes, the worse it gets. Threat 1 hits at 5 minutes, 2 at 20, 3 at 40 and 4 at 60. Mobs start spawning as elites with more health and damage, and hunting parties come after you.
 - **Dying in raid.** By default you lose everything except what's in your secure pouch, and nothing drops. Dying in a safe zone is a normal death.
 - **Hideout.** Craft a Hideout Bench (3 cobblestone on top, then plank / crafting table / plank, then 3 planks) and place it. Everything within 30 blocks is your hideout. Chests and barrels inside it are your stash.
 - **Hideout modules.** The bench builds modules from your stash, and each one takes real time:
@@ -55,7 +55,13 @@ The inventory screen has five tabs: GEAR, CRAFTING, SKILLS, STATUS and WEB. Crea
 - **Rigs and backpacks** have to be empty before you can take them off. You start with a Scav vest (4x2), a Sling bag (3x3) and a 2x2 pouch. Bigger ones are made at the Hideout Bench.
 - **Chests and barrels** open on the GEAR tab as grids too. Where you put things stays put, while hoppers still work like normal. In your hideout, every stash chest shows up there, and STASH ALL dumps your pockets, rig and backpack into them. Sneak + use with an empty hand opens the old chest screen.
 - **Vanilla screens** like the crafting table, furnace and anvil show your grids beside them. Click a grid item to grab it, then drop it in a slot, or the other way round.
-- **Crafting.** The CRAFTING tab lists everything you can make right now from your hotbar, your grids and your stash. 3x3 recipes need a crafting table within 6 blocks, or you have to be in the hideout. The CRAFTING GRID button opens a real grid if you'd rather lay it out yourself.
+- **Crafting.** The CRAFTING tab has a recipe list on the left and a crafting grid on the right. Right-clicking a crafting table opens the same tab.
+  - Click a recipe and it gets laid out in the grid with what you have. Your hotbar, grids and stash all count.
+  - Or lay it out yourself: click something in MATERIALS, then click a grid cell. Right-click puts down just one.
+  - Click the result to craft, or Shift-click to craft as many as you can.
+  - Anything left in the grid goes back when you close the screen.
+  - 3x3 recipes need a crafting table within 6 blocks, or you have to be in the hideout. Otherwise you get 2x2.
+  - Outside a hideout, the tab tells you how to make a Hideout Bench and pins it to the top of the list.
 - **Ammo.** Bows and crossbows pull arrows from your rig, pockets or backpack.
 
 ### Health
@@ -74,9 +80,14 @@ The inventory screen has five tabs: GEAR, CRAFTING, SKILLS, STATUS and WEB. Crea
 
 ### Weapons and armor from parts
 
-- Swords, axes, bows, crossbows, shields and armor are made from parts: blades, handles, guards, wraps, plates and padding. The vanilla recipes for them are gone.
-- Craft the parts, then put them in a crafting grid to assemble the item. The standard parts give you exactly the vanilla item. Other materials change damage, swing speed, durability, armor and weight.
-- The **Weapon Bench** (a smithing table and a crafting table, shapeless) swaps parts on an item you already have, and levels parts up to 4.
+- Swords, axes, crossbows, shields and metal armor are made from parts: blades, handles, guards, wraps, plates and padding. The vanilla recipes for them are gone. Bows keep their vanilla recipe.
+- Craft the parts on the CRAFTING tab. Blades are 2 ingots in a column, plates are 2 in a row, handles are 2 logs, planks or bones diagonally, and so on.
+- Build the item at the **Weapon Bench** (a smithing table and a crafting table, shapeless):
+  1. With the left slot empty, pick what to build.
+  2. Each part gets its own labelled slot: Blade, Grip, Guard, Wrap, or Plates ×4, Padding, Straps for a chestplate.
+  3. Fill them and hit ASSEMBLE.
+- The standard parts give you exactly the vanilla item. Other materials change damage, swing speed, durability, armor and weight.
+- Put an existing item in the left slot to swap its parts, or level a part up to 4 with its own material.
 
 ### Character
 
@@ -112,7 +123,7 @@ There's only ever one Joe and one Sean. If they die, they come back later.
 - **Config file:** `config/seancraft/seancraft.properties`. It's created on first run, and every setting has a comment. Run `/seancraft reload` after changing it.
 - **Common changes:**
   - `Raid.DeathRule`: `LOSE_EVERYTHING`, `KEEP_SECURE` (normal drops, but you keep the pouch), or `VANILLA`.
-  - `Raid.CalmMinutes` and `Raid.ThreatStepMinutes`: how fast threat builds.
+  - `Raid.ThreatMinutes`: when each threat level starts (default `5,20,40,60`).
   - `Spawn.*`: number of spawn points, distance, safe radius, restock time.
 - **Commands:**
   - `/seancraft where` shows where Joe and Sean are.

@@ -48,7 +48,6 @@ public class TarkovScreen extends Screen {
     private static final int COL4 = 264;
     private static final int COL4_W = 9 * C;
     private static final int ROW = 22;
-    private static final int GRID_BTN_X = W - 86;
 
     private int tab;
     private float scale = 1;
@@ -63,6 +62,7 @@ public class TarkovScreen extends Screen {
 
     private double containerScroll;
     private double craftScroll;
+    private double matScroll;
     private String search = "";
     private boolean searchFocused;
     private int ticks;
@@ -604,7 +604,7 @@ public class TarkovScreen extends Screen {
     private List<TetrisNet.CraftEntry> filtered() {
         String q = search.toLowerCase(Locale.ROOT);
         List<TetrisNet.CraftEntry> out = new ArrayList<>();
-        for (TetrisNet.CraftEntry e : ClientTetris.crafts) {
+        for (TetrisNet.CraftEntry e : ClientTetris.craft.entries()) {
             if (q.isEmpty() || e.result().getHoverName().getString().toLowerCase(Locale.ROOT).contains(q)) {
                 out.add(e);
             }
@@ -612,7 +612,42 @@ public class TarkovScreen extends Screen {
         return out;
     }
 
+    // Layout of the CRAFTING tab: recipe list on the left, grid, result and materials on the right.
+    private static final int LIST_W = 250;
+    private static final int PX = 262;
+    private static final int CELL = 22;
+    private static final int GRID_Y = 14;
+    private static final int RESULT_X = PX + 3 * CELL + 26;
+    private static final int RESULT_Y = GRID_Y + CELL - 4;
+    private static final int CLEAR_X = W - 40;
+    private static final int MAT_Y = GRID_Y + 3 * CELL + 18;
+
+    private int listTop() {
+        return ClientTetris.craft.inHideout() ? 20 : 58;
+    }
+
+    private int cellAt(double x, double y) {
+        if (x < PX || x >= PX + 3 * CELL || y < GRID_Y || y >= GRID_Y + 3 * CELL) {
+            return -1;
+        }
+        return (int) ((y - GRID_Y) / CELL) * 3 + (int) ((x - PX) / CELL);
+    }
+
+    private boolean overResult(double x, double y) {
+        return x >= RESULT_X && x < RESULT_X + 26 && y >= RESULT_Y && y < RESULT_Y + 26;
+    }
+
+    private int materialAt(double x, double y) {
+        int top = MAT_Y + 10 - (int) matScroll;
+        if (x < PX || x >= PX + 9 * C || y < Math.max(top, MAT_Y + 10) || y >= H) {
+            return -2;
+        }
+        int i = (int) ((y - top) / C) * 9 + (int) ((x - PX) / C);
+        return i >= 0 && i < ClientTetris.craft.materials().size() ? i : -1;
+    }
+
     private ItemStack renderCrafting(GuiGraphics g, int mx, int my) {
+        TetrisNet.CraftList craft = ClientTetris.craft;
         g.fill(0, 0, 140, 14, searchFocused ? 0xFF55555F : 0xFF33333C);
         g.fill(1, 1, 139, 13, 0xFF101014);
         String shown = search.isEmpty() && !searchFocused ? "Search..." : search + (searchFocused && ticks / 6 % 2 == 0 ? "_" : "");
@@ -620,48 +655,132 @@ public class TarkovScreen extends Screen {
         g.pose().pushPose();
         g.pose().translate(146, 3, 0);
         g.pose().scale(0.75f, 0.75f, 1);
-        g.drawString(font, "3x3: crafting table within 6 blocks, or hideout.", 0, 0, 0xFF888890, false);
-        g.drawString(font, "Uses hotbar and grids" + (ClientTetris.sync.stash() ? ", and the stash." : "."), 0, 9, 0xFF888890, false);
+        g.drawString(font, "Click a recipe to lay it out,", 0, 0, 0xFF888890, false);
+        g.drawString(font, "or place materials yourself.", 0, 9, 0xFF888890, false);
         g.pose().popPose();
-        boolean gridHover = mx >= GRID_BTN_X && mx < W && my >= 0 && my < 14;
-        g.fill(GRID_BTN_X, 0, W, 14, gridHover ? 0xFF4C4C58 : 0xFF33333C);
-        g.drawString(font, "CRAFTING GRID", GRID_BTN_X + (W - GRID_BTN_X - font.width("CRAFTING GRID")) / 2, 3, 0xFFDDDDDD, false);
+        ItemStack tip = ItemStack.EMPTY;
 
+        if (!craft.inHideout()) {
+            g.fill(0, 18, LIST_W, 54, 0xFF2E2614);
+            g.fill(0, 18, 2, 54, 0xFFE0C060);
+            g.drawString(font, "No hideout here. Start one:", 6, 21, 0xFFE0C060, false);
+            g.pose().pushPose();
+            g.pose().translate(6, 32, 0);
+            g.pose().scale(0.75f, 0.75f, 1);
+            g.drawString(font, "Hideout Bench: 3 cobblestone on top, then plank,", 0, 0, 0xFFDDD0B0, false);
+            g.drawString(font, "crafting table, plank, then 3 planks. Place it and", 0, 9, 0xFFDDD0B0, false);
+            g.drawString(font, "everything within 30 blocks is your hideout.", 0, 18, 0xFFDDD0B0, false);
+            g.pose().popPose();
+        }
+
+        // Recipe list.
         List<TetrisNet.CraftEntry> list = filtered();
-        int top = 20;
+        int top = listTop();
         double max = Math.max(0, list.size() * ROW - (H - top));
         craftScroll = Math.max(0, Math.min(max, craftScroll));
         if (list.isEmpty()) {
-            g.drawString(font, ClientTetris.crafts.isEmpty() ? "Nothing you can make right now." : "No matches.", 0, top + 4, 0xFF666670, false);
-            return ItemStack.EMPTY;
+            g.drawString(font, craft.entries().isEmpty() ? "Nothing you can make right now." : "No matches.", 0, top + 4, 0xFF666670, false);
         }
-        ItemStack tip = ItemStack.EMPTY;
-        g.enableScissor((int) ox, (int) (oy + top * scale), (int) (ox + W * scale), (int) (oy + H * scale));
+        g.enableScissor((int) ox, (int) (oy + top * scale), (int) (ox + LIST_W * scale), (int) (oy + H * scale));
         for (int i = 0; i < list.size(); i++) {
             int y = top + i * ROW - (int) craftScroll;
             if (y + ROW < top || y > H) {
                 continue;
             }
             TetrisNet.CraftEntry e = list.get(i);
-            boolean hover = my >= y && my < y + ROW - 2 && my >= top;
-            g.fill(0, y, W, y + ROW - 2, hover ? 0xFF26262E : 0xFF1C1C22);
+            boolean hover = mx >= 0 && mx < LIST_W && my >= y && my < y + ROW - 2 && my >= top;
+            g.fill(0, y, LIST_W, y + ROW - 2, hover ? 0xFF26262E : 0xFF1C1C22);
             g.renderItem(e.result(), 3, y + 2);
             g.renderItemDecorations(font, e.result(), 3, y + 2);
-            g.drawString(font, e.result().getHoverName().getString(), 24, y + 6, 0xFFFFFFFF, false);
-            String can = "can make " + e.times();
-            g.drawString(font, can, W - 100 - font.width(can), y + 6, 0xFF888890, false);
-            for (int bi = 0; bi < 2; bi++) {
-                int bx = W - 90 + bi * 46;
-                boolean bh = mx >= bx && mx < bx + 42 && my >= y + 2 && my < y + ROW - 4 && my >= top;
-                g.fill(bx, y + 2, bx + 42, y + ROW - 4, bh ? 0xFF4C8C4C : 0xFF3A6A3A);
-                String t = bi == 0 ? "CRAFT" : "ALL";
-                g.drawString(font, t, bx + (42 - font.width(t)) / 2, y + 6, 0xFFFFFFFF, false);
-            }
-            if (hover && mx >= 0 && mx < 200) {
+            g.drawString(font, font.plainSubstrByWidth(e.result().getHoverName().getString(), LIST_W - 90), 24, y + 6, 0xFFFFFFFF, false);
+            String can = e.times() > 0 ? "x" + e.times() : e.times() < 0 ? "needs crafting table" : "missing items";
+            g.drawString(font, can, LIST_W - 6 - font.width(can), y + 6, e.times() > 0 ? 0xFF888890 : e.times() < 0 ? 0xFFE0C060 : 0xFFFF7755, false);
+            if (hover) {
                 tip = e.result();
             }
         }
         g.disableScissor();
+
+        // Grid, result, clear.
+        g.drawString(font, "CRAFTING GRID", PX, 2, 0xFFE0C060, false);
+        boolean clearHover = mx >= CLEAR_X && mx < W && my >= 0 && my < 12;
+        g.fill(CLEAR_X, 0, W, 12, clearHover ? 0xFF4C4C58 : 0xFF33333C);
+        g.drawString(font, "CLEAR", CLEAR_X + (40 - font.width("CLEAR")) / 2, 2, 0xFFDDDDDD, false);
+        for (int c = 0; c < 9; c++) {
+            int x = PX + (c % 3) * CELL;
+            int y = GRID_Y + (c / 3) * CELL;
+            boolean hover = cellAt(mx, my) == c;
+            boolean small = !craft.table() && (c % 3 == 2 || c / 3 == 2);
+            g.fill(x, y, x + CELL - 1, y + CELL - 1, hover ? 0xFF4A4A56 : 0xFF2A2A30);
+            g.fill(x + 1, y + 1, x + CELL - 2, y + CELL - 2, small ? 0xFF141418 : 0xFF1A1A1F);
+            ItemStack in = c < craft.grid().size() ? craft.grid().get(c) : ItemStack.EMPTY;
+            boolean lifted = heldFrom != null && heldFrom.kind() == Loc.CRAFT && heldFrom.a() == c && heldCount == 0;
+            if (!in.isEmpty() && !lifted) {
+                g.renderItem(in, x + 3, y + 3);
+                g.renderItemDecorations(font, in, x + 3, y + 3);
+                if (hover) {
+                    tip = in;
+                }
+            }
+        }
+        g.drawString(font, "→", PX + 3 * CELL + 9, RESULT_Y + 9, 0xFF888890, false);
+        boolean resultHover = overResult(mx, my);
+        g.fill(RESULT_X, RESULT_Y, RESULT_X + 26, RESULT_Y + 26, resultHover && !craft.result().isEmpty() ? 0xFF4C8C4C : 0xFF2A2A30);
+        g.fill(RESULT_X + 1, RESULT_Y + 1, RESULT_X + 25, RESULT_Y + 25, 0xFF1A1A1F);
+        if (!craft.result().isEmpty()) {
+            g.renderItem(craft.result(), RESULT_X + 5, RESULT_Y + 5);
+            g.renderItemDecorations(font, craft.result(), RESULT_X + 5, RESULT_Y + 5);
+            if (resultHover) {
+                tip = craft.result();
+            }
+        }
+        g.pose().pushPose();
+        g.pose().translate(RESULT_X - 2, RESULT_Y + 30, 0);
+        g.pose().scale(0.75f, 0.75f, 1);
+        if (craft.needsTable()) {
+            g.drawString(font, "Needs a crafting table", 0, 0, 0xFFFF7755, false);
+            g.drawString(font, "or the hideout", 0, 9, 0xFFFF7755, false);
+        } else if (!craft.result().isEmpty()) {
+            g.drawString(font, "Click: craft", 0, 0, 0xFF888890, false);
+            g.drawString(font, "Shift: craft all", 0, 9, 0xFF888890, false);
+        } else if (!craft.table()) {
+            g.drawString(font, "2x2 only here.", 0, 0, 0xFF666670, false);
+            g.drawString(font, "3x3: near a table", 0, 9, 0xFF666670, false);
+        }
+        g.pose().popPose();
+
+        // Materials.
+        List<ItemStack> mats = craft.materials();
+        g.drawString(font, "MATERIALS" + (craft.inHideout() ? " (incl. stash)" : ""), PX, MAT_Y, 0xFFE0C060, false);
+        double mmax = Math.max(0, ((mats.size() + 8) / 9) * C - (H - MAT_Y - 10));
+        matScroll = Math.max(0, Math.min(mmax, matScroll));
+        g.enableScissor((int) (ox + PX * scale), (int) (oy + (MAT_Y + 10) * scale), (int) (ox + W * scale), (int) (oy + H * scale));
+        for (int i = 0; i < mats.size(); i++) {
+            int x = PX + (i % 9) * C;
+            int y = MAT_Y + 10 + (i / 9) * C - (int) matScroll;
+            ItemStack m = mats.get(i);
+            boolean hover = materialAt(mx, my) == i;
+            g.fill(x, y, x + C - 1, y + C - 1, hover ? 0xFF4A4A56 : 0xFF2A2A30);
+            g.fill(x + 1, y + 1, x + C - 2, y + C - 2, 0xFF1A1A1F);
+            g.renderItem(m, x + 1, y + 1);
+            g.renderItemDecorations(font, m, x + 1, y + 1, m.getCount() > 999 ? "999+" : null);
+            if (hover) {
+                tip = m;
+            }
+        }
+        g.disableScissor();
+        if (mats.isEmpty()) {
+            g.drawString(font, "Nothing to craft with.", PX, MAT_Y + 14, 0xFF666670, false);
+        }
+
+        if (!held.isEmpty()) {
+            g.pose().pushPose();
+            g.pose().translate(0, 0, 300);
+            ItemStack shownHeld = heldCount > 0 ? held.copyWithCount(heldCount) : held;
+            g.renderItem(shownHeld, mx - 8, my - 8);
+            g.renderItemDecorations(font, shownHeld, mx - 8, my - 8);
+            g.pose().popPose();
+        }
         return tip;
     }
 
@@ -732,7 +851,7 @@ public class TarkovScreen extends Screen {
         double x = vx(mouseX);
         double y = vy(mouseY);
         if (tab == CRAFTING) {
-            return clickCrafting(x, y);
+            return clickCrafting(x, y, button);
         }
         if (tab != GEAR) {
             return super.mouseClicked(mouseX, mouseY, button);
@@ -779,29 +898,73 @@ public class TarkovScreen extends Screen {
         return p != null && p.rotated != heldRot;
     }
 
-    private boolean clickCrafting(double x, double y) {
+    private boolean clickCrafting(double x, double y, int button) {
         searchFocused = x >= 0 && x < 140 && y >= 0 && y < 14;
-        if (x >= GRID_BTN_X && x < W && y >= 0 && y < 14) {
-            ClientPlayNetworking.send(new TetrisNet.Action(6));
+        TetrisNet.CraftList craft = ClientTetris.craft;
+        if (x >= CLEAR_X && x < W && y >= 0 && y < 12) {
+            dropHeld();
+            ClientPlayNetworking.send(new TetrisNet.Craft("#clear", 0));
+            return true;
+        }
+        if (overResult(x, y)) {
+            if (!craft.result().isEmpty()) {
+                ClientPlayNetworking.send(new TetrisNet.Craft("#grid", hasShiftDown() ? 64 : 1));
+            }
+            return true;
+        }
+        int cell = cellAt(x, y);
+        if (cell >= 0) {
+            if (!held.isEmpty()) {
+                int n = button == 1 ? 1 : heldCount;
+                if (!(heldFrom.kind() == Loc.CRAFT && heldFrom.a() == cell)) {
+                    ClientPlayNetworking.send(new TetrisNet.Move(heldFrom, Loc.craft(cell), false, n));
+                }
+                dropHeld();
+                return true;
+            }
+            ItemStack in = cell < craft.grid().size() ? craft.grid().get(cell) : ItemStack.EMPTY;
+            if (!in.isEmpty()) {
+                if (button == 1) {
+                    // Right-click a cell: put it back.
+                    ClientPlayNetworking.send(new TetrisNet.Move(Loc.craft(cell), Loc.material(0), false, 0));
+                } else {
+                    heldFrom = Loc.craft(cell);
+                    held = in;
+                    heldCount = hasShiftDown() && in.getCount() > 1 ? in.getCount() / 2 : 0;
+                }
+            }
+            return true;
+        }
+        int mat = materialAt(x, y);
+        if (mat != -2) {
+            if (!held.isEmpty()) {
+                if (heldFrom.kind() == Loc.CRAFT) {
+                    ClientPlayNetworking.send(new TetrisNet.Move(heldFrom, Loc.material(0), false, heldCount));
+                }
+                dropHeld();
+                return true;
+            }
+            if (mat >= 0) {
+                ItemStack m = craft.materials().get(mat);
+                int full = Math.min(m.getCount(), m.getMaxStackSize());
+                heldFrom = Loc.material(mat);
+                held = m.copyWithCount(full);
+                heldCount = button == 1 ? 1 : hasShiftDown() ? Math.max(1, full / 2) : full;
+            }
+            return true;
+        }
+        if (!held.isEmpty()) {
+            dropHeld();
             return true;
         }
         List<TetrisNet.CraftEntry> list = filtered();
-        int top = 20;
-        if (y < top) {
+        int top = listTop();
+        if (x < 0 || x >= LIST_W || y < top) {
             return true;
         }
         int i = (int) ((y - top + craftScroll) / ROW);
-        if (i < 0 || i >= list.size()) {
-            return true;
-        }
-        int rowY = top + i * ROW - (int) craftScroll;
-        for (int bi = 0; bi < 2; bi++) {
-            int bx = W - 90 + bi * 46;
-            if (x >= bx && x < bx + 42 && y >= rowY + 2 && y < rowY + ROW - 4) {
-                TetrisNet.CraftEntry e = list.get(i);
-                ClientPlayNetworking.send(new TetrisNet.Craft(e.id(), bi == 0 ? 1 : e.times()));
-                return true;
-            }
+        if (i >= 0 && i < list.size()) {
+            ClientPlayNetworking.send(new TetrisNet.Craft(list.get(i).id(), 0));
         }
         return true;
     }
@@ -821,7 +984,9 @@ public class TarkovScreen extends Screen {
         if (tab == WEB) {
             return web.mouseScrolled(mouseX, mouseY - TOP, scrollX, scrollY);
         }
-        if (tab == CRAFTING) {
+        if (tab == CRAFTING && vx(mouseX) >= PX) {
+            matScroll -= scrollY * 18;
+        } else if (tab == CRAFTING) {
             craftScroll -= scrollY * 20;
         } else if (tab == GEAR && vx(mouseX) >= COL4) {
             containerScroll -= scrollY * 20;

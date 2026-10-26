@@ -207,16 +207,23 @@ public final class Tarkov {
         ServerPlayNetworking.send(player, new TarkovNet.RaidState(2, (int) (raidTicks / 20), threat, secondsToNextThreat(raidTicks, data.lastIntel)));
     }
 
+    /** Raid minute at which a threat level (1-4) starts. The Intel center pushes every level back. */
+    private static double threatStart(int level, int intel) {
+        double[] at = Cfg.threatMinutes;
+        double base = at[Math.min(level, at.length) - 1];
+        return base + intel * Module.INTEL_CALM_MINUTES;
+    }
+
     static int threat(long raidTicks, int intel) {
         if (!Cfg.raidHostility) {
             return 0;
         }
         double minutes = raidTicks / 1200.0;
-        double calm = Cfg.calmMinutes + intel * Module.INTEL_CALM_MINUTES;
-        if (minutes < calm) {
-            return 0;
+        int threat = 0;
+        while (threat < MAX_THREAT && minutes >= threatStart(threat + 1, intel)) {
+            threat++;
         }
-        return Math.min(MAX_THREAT, 1 + (int) Math.floor((minutes - calm) / Math.max(0.1, Cfg.threatStepMinutes)));
+        return threat;
     }
 
     private static int secondsToNextThreat(long raidTicks, int intel) {
@@ -224,9 +231,7 @@ public final class Tarkov {
         if (!Cfg.raidHostility || threat >= MAX_THREAT) {
             return -1;
         }
-        double calm = Cfg.calmMinutes + intel * Module.INTEL_CALM_MINUTES;
-        double next = (calm + threat * Math.max(0.1, Cfg.threatStepMinutes)) * 60;
-        return (int) Math.max(0, next - raidTicks / 20.0);
+        return (int) Math.max(0, threatStart(threat + 1, intel) * 60 - raidTicks / 20.0);
     }
 
     /** Current threat for a player, 0 if not in raid. */

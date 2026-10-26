@@ -91,8 +91,8 @@ public final class Cfg {
     public static double hideoutRadius = 30;
     public static boolean raidHostility = true;
     public static boolean huntingParties = true;
-    public static double calmMinutes = 5;
-    public static double threatStepMinutes = 5;
+    /** Raid minute each threat level (1-4) starts at. */
+    public static double[] threatMinutes = {5, 20, 40, 60};
     public static int spawnPoints = 3;
     public static double spawnDistance = 400;
     public static double spawnRadius = 24;
@@ -166,12 +166,14 @@ public final class Cfg {
         d("Raid", "HideoutRadius", "Radius (blocks) of a Hideout Bench's safe zone before Perimeter upgrades.", v -> hideoutRadius = v, () -> hideoutRadius);
         b("Raid", "Hostility", "Threat rises the longer you stay out: elite mobs and hunting parties.", v -> raidHostility = v, () -> raidHostility);
         b("Raid", "HuntingParties", "Send hunting parties at raiding players as threat rises.", v -> huntingParties = v, () -> huntingParties);
-        d("Raid", "CalmMinutes", "Minutes at the start of a raid before threat starts rising.", v -> calmMinutes = v, () -> calmMinutes);
         i("Spawn", "Points", "Fixed spawn points (with a supply shelter) built in a new world. 0 turns them off. Only read when the world is first started.", v -> spawnPoints = v, () -> spawnPoints);
         d("Spawn", "Distance", "How far the other spawn points are from world spawn (blocks).", v -> spawnDistance = v, () -> spawnDistance);
         d("Spawn", "Radius", "Safe radius around each spawn point: no raid starts until you leave it.", v -> spawnRadius = v, () -> spawnRadius);
         d("Spawn", "RefillMinutes", "Empty spawn chests are restocked after this long.", v -> spawnRefillMinutes = v, () -> spawnRefillMinutes);
-        d("Raid", "ThreatStepMinutes", "Minutes between threat levels (max 4).", v -> threatStepMinutes = v, () -> threatStepMinutes);
+        s("Raid", "ThreatMinutes", "Raid minute each threat level starts at, levels 1 to 4, comma-separated.",
+                v -> threatMinutes = parseThreat(v), () -> java.util.Arrays.stream(threatMinutes)
+                        .mapToObj(m -> m == Math.floor(m) ? String.valueOf((long) m) : String.valueOf(m))
+                        .collect(java.util.stream.Collectors.joining(",")));
 
         d("Fight", "TriggerRange", "Joe and Sean start fighting when this close (blocks).", v -> fightTriggerRange = v, () -> fightTriggerRange);
         d("Fight", "DurationSeconds", "Length of a fight.", v -> fightSeconds = v, () -> fightSeconds);
@@ -180,6 +182,22 @@ public final class Cfg {
     }
 
     private Cfg() {}
+
+    /** Four ascending minutes; anything malformed keeps the defaults. */
+    private static double[] parseThreat(String v) {
+        String[] parts = v.split(",");
+        if (parts.length != 4) {
+            return threatMinutes;
+        }
+        double[] out = new double[4];
+        for (int i = 0; i < 4; i++) {
+            out[i] = Math.max(0, Double.parseDouble(parts[i].trim()));
+            if (i > 0 && out[i] < out[i - 1]) {
+                return threatMinutes;
+            }
+        }
+        return out;
+    }
 
     public static Path dir() {
         return net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir().resolve("seancraft");
