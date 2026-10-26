@@ -106,6 +106,15 @@ public final class GridPanel {
         return out;
     }
 
+    /** Where the furnace panel goes: under the backpack on the right, or at the top there if you have none. x, y, width. */
+    private static int[] furnaceArea(Screen screen, List<Box> boxes, int left, int top, int imageWidth) {
+        Box pack = box(boxes, GridId.BACKPACK);
+        Box pockets = box(boxes, GridId.POCKETS);
+        int x = pack != null ? pack.x : pockets != null && pockets.x > left ? pockets.x + InvData.POCKET_W * pockets.c + 8 : left + imageWidth + 4;
+        int y = pack != null ? pack.y + pack.h * pack.c + 6 : top;
+        return new int[] {x, y, screen.width - x - 4};
+    }
+
     private static Loc locAt(List<Box> boxes, double mx, double my) {
         for (Box b : boxes) {
             if (mx >= b.x && mx < b.x + b.w * b.c && my >= b.y && my < b.y + b.h * b.c) {
@@ -190,6 +199,16 @@ public final class GridPanel {
                     ok ? 0x6040C040 : 0x60C04040);
         }
         g.pose().popPose();
+        if (FurnacePanel.applies(screen)) {
+            int[] a = furnaceArea(screen, boxes, left, top, imageWidth);
+            g.pose().pushPose();
+            g.pose().translate(0, 0, 100);
+            ItemStack furnaceTip = FurnacePanel.render(g, a[0], a[1], a[2], mx, my);
+            g.pose().popPose();
+            if (tip.isEmpty()) {
+                tip = furnaceTip;
+            }
+        }
         if (!tip.isEmpty() && carried.isEmpty()) {
             g.renderTooltip(font, tip, mx, my);
         }
@@ -225,7 +244,15 @@ public final class GridPanel {
     /** True if the click was on the panel (and was handled). */
     public static boolean click(AbstractContainerScreen<?> screen, double mx, double my, int button, int left, int top, int imageWidth,
             int imageHeight) {
-        Loc loc = locAt(layout(screen, left, top, imageWidth, imageHeight), mx, my);
+        List<Box> boxes = layout(screen, left, top, imageWidth, imageHeight);
+        if (FurnacePanel.applies(screen) && screen.getMenu().getCarried().isEmpty() && (button == 0 || button == 1)) {
+            int[] a = furnaceArea(screen, boxes, left, top, imageWidth);
+            if (FurnacePanel.click(a[0], a[1], a[2], mx, my, button)) {
+                swallowRelease = true;
+                return true;
+            }
+        }
+        Loc loc = locAt(boxes, mx, my);
         if (loc == null || (button != 0 && button != 1)) {
             return false;
         }

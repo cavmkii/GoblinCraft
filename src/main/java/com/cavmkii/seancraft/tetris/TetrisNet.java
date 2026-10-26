@@ -269,6 +269,57 @@ public final class TetrisNet {
         @Override public Type<Craft> type() { return TYPE; }
     }
 
+    private static void writeStacks(RegistryFriendlyByteBuf buf, List<ItemStack> list) {
+        buf.writeVarInt(list.size());
+        list.forEach(st -> {
+            ItemStack.STREAM_CODEC.encode(buf, st.copyWithCount(1));
+            buf.writeVarInt(st.getCount());
+        });
+    }
+
+    private static List<ItemStack> readStacks(RegistryFriendlyByteBuf buf) {
+        int n = buf.readVarInt();
+        List<ItemStack> out = new ArrayList<>();
+        for (int i = 0; i < n; i++) {
+            ItemStack st = ItemStack.STREAM_CODEC.decode(buf);
+            st.setCount(buf.readVarInt());
+            out.add(st);
+        }
+        return out;
+    }
+
+    /**
+     * Server to client, while a furnace is open: fuel and things it can cook, merged with total counts (which can go
+     * past a stack), from what you carry and from the stash.
+     */
+    public record FurnaceStock(boolean stash, List<ItemStack> fuelYou, List<ItemStack> fuelStash, List<ItemStack> smeltYou,
+            List<ItemStack> smeltStash) implements CustomPacketPayload {
+        public static final Type<FurnaceStock> TYPE = payloadType("furnace_stock");
+        public static final StreamCodec<RegistryFriendlyByteBuf, FurnaceStock> CODEC = StreamCodec.of((buf, p) -> {
+            buf.writeBoolean(p.stash);
+            writeStacks(buf, p.fuelYou);
+            writeStacks(buf, p.fuelStash);
+            writeStacks(buf, p.smeltYou);
+            writeStacks(buf, p.smeltStash);
+        }, buf -> new FurnaceStock(buf.readBoolean(), readStacks(buf), readStacks(buf), readStacks(buf), readStacks(buf)));
+        @Override public Type<FurnaceStock> type() { return TYPE; }
+    }
+
+    /**
+     * Client to server: put some of an item into the open furnace. {@code stash} picks where it comes from,
+     * {@code fuel} the fuel slot (else the input), {@code count} 0 for as much as fits.
+     */
+    public record FurnaceFill(ItemStack item, boolean stash, boolean fuel, int count) implements CustomPacketPayload {
+        public static final Type<FurnaceFill> TYPE = payloadType("furnace_fill");
+        public static final StreamCodec<RegistryFriendlyByteBuf, FurnaceFill> CODEC = StreamCodec.of((buf, p) -> {
+            ItemStack.STREAM_CODEC.encode(buf, p.item.copyWithCount(1));
+            buf.writeBoolean(p.stash);
+            buf.writeBoolean(p.fuel);
+            buf.writeVarInt(p.count);
+        }, buf -> new FurnaceFill(ItemStack.STREAM_CODEC.decode(buf), buf.readBoolean(), buf.readBoolean(), buf.readVarInt()));
+        @Override public Type<FurnaceFill> type() { return TYPE; }
+    }
+
     static void register() {
         PayloadTypeRegistry.playS2C().register(Sync.TYPE, Sync.CODEC);
         PayloadTypeRegistry.playS2C().register(Open.TYPE, Open.CODEC);
@@ -281,5 +332,7 @@ public final class TetrisNet {
         PayloadTypeRegistry.playC2S().register(ContainerAction.TYPE, ContainerAction.CODEC);
         PayloadTypeRegistry.playC2S().register(ContainerName.TYPE, ContainerName.CODEC);
         PayloadTypeRegistry.playC2S().register(Track.TYPE, Track.CODEC);
+        PayloadTypeRegistry.playS2C().register(FurnaceStock.TYPE, FurnaceStock.CODEC);
+        PayloadTypeRegistry.playC2S().register(FurnaceFill.TYPE, FurnaceFill.CODEC);
     }
 }

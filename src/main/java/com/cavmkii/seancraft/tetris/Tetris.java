@@ -130,6 +130,7 @@ public final class Tetris {
     public static void init() {
         TetrisNet.register();
         ContainerGrid.init();
+        FurnaceFeed.init();
         ServerTickEvents.END_SERVER_TICK.register(Tetris::tick);
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> rt(handler.player).dirty = true);
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
@@ -601,32 +602,50 @@ public final class Tetris {
         if (rt.container != null) {
             Container c = containerAt(player, rt.container);
             if (c != null) {
-                BlockState state = level.getBlockState(rt.container);
-                covered.add(rt.container);
-                BlockPos holderPos = rt.container;
-                if (state.getBlock() instanceof ChestBlock && state.getValue(ChestBlock.TYPE) != ChestType.SINGLE) {
-                    BlockPos other = rt.container.relative(ChestBlock.getConnectedDirection(state));
-                    covered.add(other);
-                    if (other.asLong() < holderPos.asLong()) {
-                        holderPos = other;
-                    }
-                }
-                String name = containerName(level, rt.container, covered);
-                BlockEntity holder = level.getBlockEntity(holderPos);
-                if (holder != null) {
-                    out.add(new Shown(rt.container, name, c, holder));
+                Shown shown = shown(level, rt.container, c, covered);
+                if (shown != null) {
+                    out.add(shown);
                 }
             }
         }
         Hideouts.Hideout home = Hideouts.at(level, player.position());
         if (home != null) {
             for (Container c : Stash.containers(level, home)) {
-                if (c instanceof BlockEntity be && !covered.contains(be.getBlockPos())) {
-                    out.add(new Shown(be.getBlockPos(), containerName(level, be.getBlockPos(), Set.of(be.getBlockPos())), c, be));
+                if (!(c instanceof BlockEntity be) || covered.contains(be.getBlockPos())) {
+                    continue;
+                }
+                // A double chest's halves show as one Large Chest, the same as when you open it.
+                BlockPos pos = be.getBlockPos();
+                BlockState state = level.getBlockState(pos);
+                Container whole = state.getBlock() instanceof ChestBlock chest ? ChestBlock.getContainer(chest, state, level, pos, true) : c;
+                Shown shown = shown(level, pos, whole != null ? whole : c, covered);
+                if (shown != null) {
+                    out.add(shown);
                 }
             }
         }
         return out;
+    }
+
+    /**
+     * One container to show, marking its block (both halves for a double chest) as covered. The grid layout lives
+     * on the half with the lower position, so it's the same whichever half you open or how you reach it.
+     */
+    private static Shown shown(ServerLevel level, BlockPos pos, Container c, Set<BlockPos> covered) {
+        Set<BlockPos> halves = new HashSet<>();
+        halves.add(pos);
+        BlockPos holderPos = pos;
+        BlockState state = level.getBlockState(pos);
+        if (c instanceof CompoundContainer && state.getBlock() instanceof ChestBlock && state.getValue(ChestBlock.TYPE) != ChestType.SINGLE) {
+            BlockPos other = pos.relative(ChestBlock.getConnectedDirection(state));
+            halves.add(other);
+            if (other.asLong() < holderPos.asLong()) {
+                holderPos = other;
+            }
+        }
+        covered.addAll(halves);
+        BlockEntity holder = level.getBlockEntity(holderPos);
+        return holder == null ? null : new Shown(pos, containerName(level, pos, halves), c, holder);
     }
 
     /** A container's custom name if either half has one, else its default ("Large Chest" for a double). */

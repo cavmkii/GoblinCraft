@@ -5,30 +5,9 @@ import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 
-/** Bottom left: HIDEOUT, or RAID with the timer, threat level and when it rises next. */
+/** Bottom left: HIDEOUT, or RAID with the timer, threat level and when it rises next; injuries and effects above. */
 final class RaidHud {
     private RaidHud() {}
-
-    /** Injuries listed above the raid readout, newest-looking first. */
-    private static void injuries(GuiGraphics g, Minecraft mc, int x, int bottom) {
-        TarkovNet.BodySync body = ClientTarkov.body;
-        java.util.List<String> lines = new java.util.ArrayList<>();
-        for (com.cavmkii.seancraft.tarkov.BodyPart p : com.cavmkii.seancraft.tarkov.BodyPart.values()) {
-            int c = body.conditions()[p.ordinal()];
-            if (body.body()[p.ordinal()] <= 0.0001f) lines.add("Destroyed - " + p.label);
-            if ((c & com.cavmkii.seancraft.tarkov.Body.HEAVY_BLEED) != 0) lines.add("Heavy bleed - " + p.label);
-            if ((c & com.cavmkii.seancraft.tarkov.Body.LIGHT_BLEED) != 0) lines.add("Light bleed - " + p.label);
-            if ((c & com.cavmkii.seancraft.tarkov.Body.FRACTURE) != 0) lines.add("Fracture - " + p.label);
-        }
-        if (body.painkillerTicks() > 0) {
-            lines.add("Painkillers " + body.painkillerTicks() / 20 + "s");
-        }
-        int y = bottom - lines.size() * 10;
-        for (String line : lines) {
-            g.drawString(mc.font, line, x, y, line.startsWith("Painkillers") ? 0xFF55FFFF : 0xFFFF7755, true);
-            y += 10;
-        }
-    }
 
     private static final long BANNER_MS = 4000;
 
@@ -62,12 +41,15 @@ final class RaidHud {
             banner(g, mc);
         }
         TarkovNet.RaidState s = ClientTarkov.raid;
-        if (mc.player == null || mc.options.hideGui || s.state() == 0) {
+        if (mc.player == null || mc.options.hideGui) {
             return;
         }
         int x = 4;
         int y = g.guiHeight() - 30;
-        injuries(g, mc, x, y - 4);
+        EffectHud.render(g, mc, x, s.state() == 0 ? g.guiHeight() - 4 : y - 4);
+        if (s.state() == 0) {
+            return;
+        }
         if (s.state() == 1) {
             g.drawString(mc.font, "HIDEOUT", x, y, 0xFF55FF55, true);
             return;
