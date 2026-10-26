@@ -30,8 +30,37 @@ final class RaidHud {
         }
     }
 
+    private static final long BANNER_MS = 4000;
+
+    /** Raid banners sit at the top of the screen and fade in and out. */
+    private static void banner(GuiGraphics g, Minecraft mc) {
+        TarkovNet.Banner b = ClientTarkov.banner;
+        if (b == null) {
+            return;
+        }
+        long age = net.minecraft.Util.getMillis() - ClientTarkov.bannerAt;
+        if (age > BANNER_MS) {
+            return;
+        }
+        float alpha = Math.min(1f, Math.min(age / 300f, (BANNER_MS - age) / 600f));
+        int a = Math.max(8, (int) (alpha * 255)) << 24;
+        int cx = g.guiWidth() / 2;
+        int y = 6;
+        int w = Math.max((int) (mc.font.width(b.title()) * 1.5f), mc.font.width(b.subtitle())) + 16;
+        g.fill(cx - w / 2, y - 3, cx + w / 2, y + 26, (int) (alpha * 0x90) << 24);
+        g.pose().pushPose();
+        g.pose().translate(cx, y, 0);
+        g.pose().scale(1.5f, 1.5f, 1);
+        g.drawString(mc.font, b.title(), -mc.font.width(b.title()) / 2, 0, a | (b.color() & 0xFFFFFF), true);
+        g.pose().popPose();
+        g.drawString(mc.font, b.subtitle(), cx - mc.font.width(b.subtitle()) / 2, y + 15, a | 0xDDDDDD, true);
+    }
+
     static void render(GuiGraphics g, DeltaTracker delta) {
         Minecraft mc = Minecraft.getInstance();
+        if (mc.player != null && !mc.options.hideGui) {
+            banner(g, mc);
+        }
         TarkovNet.RaidState s = ClientTarkov.raid;
         if (mc.player == null || mc.options.hideGui || s.state() == 0) {
             return;

@@ -22,6 +22,10 @@ public final class InvData {
     public final List<Placed> pouch = new ArrayList<>();
     public final List<ItemStack> unsorted = new ArrayList<>();
     public boolean migrated;
+    /** Refill a hotbar slot from the grids when its last item gets used up. */
+    public boolean autoRefill = true;
+    /** ...and from the stash too, when in a hideout. */
+    public boolean refillFromStash;
 
     public static final Codec<InvData> CODEC = RecordCodecBuilder.create(i -> i.group(
             ItemStack.OPTIONAL_CODEC.optionalFieldOf("rig", ItemStack.EMPTY).forGetter(d -> d.rig),
@@ -31,8 +35,10 @@ public final class InvData {
             Placed.CODEC.listOf().optionalFieldOf("backpackItems", List.of()).forGetter(d -> d.backpackItems),
             Placed.CODEC.listOf().optionalFieldOf("pouch", List.of()).forGetter(d -> d.pouch),
             ItemStack.CODEC.listOf().optionalFieldOf("unsorted", List.of()).forGetter(d -> d.unsorted),
-            Codec.BOOL.optionalFieldOf("migrated", false).forGetter(d -> d.migrated)
-    ).apply(i, (rig, backpack, pockets, rigItems, backpackItems, pouch, unsorted, migrated) -> {
+            Codec.BOOL.optionalFieldOf("migrated", false).forGetter(d -> d.migrated),
+            Codec.BOOL.optionalFieldOf("autoRefill", true).forGetter(d -> d.autoRefill),
+            Codec.BOOL.optionalFieldOf("refillFromStash", false).forGetter(d -> d.refillFromStash)
+    ).apply(i, (rig, backpack, pockets, rigItems, backpackItems, pouch, unsorted, migrated, refill, refillStash) -> {
         InvData d = new InvData();
         d.rig = rig;
         d.backpack = backpack;
@@ -42,6 +48,8 @@ public final class InvData {
         d.pouch.addAll(pouch);
         d.unsorted.addAll(unsorted);
         d.migrated = migrated;
+        d.autoRefill = refill;
+        d.refillFromStash = refillStash;
         return d;
     }));
 

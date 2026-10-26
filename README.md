@@ -28,7 +28,7 @@ The inventory screen has five tabs: GEAR, CRAFTING, SKILLS, STATUS and WEB. Crea
 ### Raids, spawn and hideout
 
 - **Spawn points.** A new world gets 3 fixed spawn points, one at world spawn and two about 400 blocks out. Each has a small shelter with 3 chests and a barrel of starting gear, and the empty ones restock every 30 minutes. New players start at a random one, and so does anyone who dies without a bed.
-- **Safe zones.** The area around a spawn point is safe, and so is your hideout. Anywhere else, you're **in raid**. The HUD in the bottom left says which one you're in.
+- **Safe zones.** The area around a spawn point is safe, and so is your hideout. Anywhere else, you're **in raid**. The HUD in the bottom left says which one you're in, and a short banner at the top of the screen tells you when a raid starts or you extract.
 - **Threat.** The longer a raid goes, the worse it gets. Threat 1 hits at 5 minutes, 2 at 20, 3 at 40 and 4 at 60. Mobs start spawning as elites with more health and damage, and hunting parties come after you.
 - **Dying in raid.** By default you lose everything except what's in your secure pouch, and nothing drops. Dying in a safe zone is a normal death.
 - **Hideout.** Craft a Hideout Bench (3 cobblestone on top, then plank / crafting table / plank, then 3 planks) and place it. Everything within 30 blocks is your hideout. Chests and barrels inside it are your stash.
@@ -44,21 +44,28 @@ The inventory screen has five tabs: GEAR, CRAFTING, SKILLS, STATUS and WEB. Crea
 ### Inventory
 
 - **Grids.** Your inventory is a set of grids: pockets (5x2), a rig, a backpack, and a secure pouch. Items take up real space, so a sword is 1x3 and a chestplate is 3x3. The hotbar, armor and off-hand still work like vanilla.
-- **Controls:**
+- **Controls** work like vanilla:
   - click to pick up and click to put down;
-  - **R** rotates;
-  - **Shift**+click takes half;
-  - **Ctrl**+click sends an item across;
+  - right-click picks up half, or puts down one while you keep holding the rest;
+  - **Shift**+click (or Ctrl) sends an item across;
   - **1-9** puts the item you're hovering on that hotbar slot;
-  - right-click or Esc lets go.
+  - **Q** drops one, Ctrl+Q drops the stack;
+  - **R** rotates;
+  - Esc lets go.
+- **Swapping.** Dropping something on a hotbar or armor slot that's already full swaps them. The item you bumped goes back where the new one came from, or into any free space.
+- **Auto-refill.** When the last item in a hotbar slot gets used up (a block placed, food eaten, a tool broken), more of the same comes up from your grids. The toggles next to HOTBAR turn it off, or let it pull from the stash too (off by default).
 - **Pickups** fill pockets, then rig, then backpack. Weapons and tools go to the hotbar first. If nothing has room, the item stays on the ground.
 - **Rigs and backpacks** have to be empty before you can take them off. You start with a Scav vest (4x2), a Sling bag (3x3) and a 2x2 pouch. Bigger ones are made at the Hideout Bench.
-- **Chests and barrels** open on the GEAR tab as grids too. Where you put things stays put, while hoppers still work like normal. Each one has a SORT button (merges stacks and packs it tight) and a TAKE ALL button. In your hideout, every stash chest shows up there, and STASH ALL dumps your pockets, rig and backpack into them. Sneak + use with an empty hand opens the old chest screen.
+- **Chests and barrels** open on the GEAR tab as grids too. Where you put things stays put, while hoppers still work like normal. Each one has a SORT button (merges stacks and packs it tight) and a TAKE ALL button. In your hideout, every stash chest shows up there, and STASH ALL dumps your pockets, rig and backpack into them.
+- **Chest filters** work like RimWorld stockpiles. FILTER on a chest lets you allow or disallow kinds of things: weapons, ammo, armor & gear, tools, food, meds, parts, blocks and materials.
+  - STASH ALL, and Shift-click with no chest open, put things where the filters say. Chests with narrower filters get first pick, so a weapons-only chest fills before a take-anything chest.
+  - ORGANIZE STASH moves anything sitting in the wrong chest to one that allows it.
+  - Filters only steer automatic moves. You can always put anything anywhere by hand. Sneak + use with an empty hand opens the old chest screen.
 - **Vanilla screens** like the crafting table, furnace and anvil show your grids beside them. Click a grid item to grab it, then drop it in a slot, or the other way round.
 - **Crafting.** The CRAFTING tab has a recipe list on the left and a crafting grid on the right. Right-clicking a crafting table opens the same tab.
   - Click a recipe and it gets laid out in the grid with what you have. Your hotbar, grids and stash all count.
   - Or lay it out yourself: click something in MATERIALS, then click a grid cell. Right-click puts down just one.
-  - Click the result to craft, or Shift-click to craft as many as you can.
+  - Click the result to craft, or Shift-click to craft as many as you can. The recipe you picked stays selected and lays itself out again after each craft, so you can keep clicking.
   - Anything left in the grid goes back when you close the screen.
   - 3x3 recipes need a crafting table within 6 blocks, or you have to be in the hideout. Otherwise you get 2x2.
   - Outside a hideout, the tab tells you how to make a Hideout Bench and pins it to the top of the list.

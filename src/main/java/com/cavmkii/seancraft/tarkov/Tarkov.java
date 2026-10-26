@@ -600,10 +600,9 @@ public final class Tarkov {
         return String.format("%02d:%02d", total / 60, total % 60);
     }
 
+    /** A banner at the top of the screen, out of the way of what you're looking at. */
     private static void title(ServerPlayer player, String title, String subtitle, ChatFormatting color) {
-        player.connection.send(new net.minecraft.network.protocol.game.ClientboundSetTitlesAnimationPacket(10, 50, 15));
-        player.connection.send(new net.minecraft.network.protocol.game.ClientboundSetSubtitleTextPacket(Component.literal(subtitle)));
-        player.connection.send(new net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket(
-                Component.literal(title).withStyle(color, ChatFormatting.BOLD)));
+        Integer rgb = color.getColor();
+        ServerPlayNetworking.send(player, new TarkovNet.Banner(title, subtitle, 0xFF000000 | (rgb != null ? rgb : 0xFFFFFF)));
     }
 }

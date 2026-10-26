@@ -98,6 +98,9 @@ public final class Tetris {
         boolean dirty = true;
         int hash;
         final net.minecraft.core.NonNullList<ItemStack> craft = net.minecraft.core.NonNullList.withSize(9, ItemStack.EMPTY);
+        /** Hotbar as of last tick (item and count), to notice a slot's last item being used up. */
+        final Item[] hotbarItem = new Item[9];
+        final int[] hotbarCount = new int[9];
         String lastRecipe;
     }
 
@@ -179,7 +182,7 @@ public final class Tetris {
             sync(ctx.player());
         });
         ServerPlayNetworking.registerGlobalReceiver(TetrisNet.ContainerAction.TYPE, (p, ctx) -> {
-            containerAction(ctx.player(), p.index(), p.action());
+            containerAction(ctx.player(), p.index(), p.action(), p.value());
             sync(ctx.player());
         });
         ServerPlayNetworking.registerGlobalReceiver(TetrisNet.PanelClick.TYPE, (p, ctx) -> {
@@ -245,6 +248,7 @@ public final class Tetris {
                 }
                 rt.dirty = true;
             }
+            refillHotbar(player, rt, data);
             // Empty the vanilla main slots into the grids.
             Inventory inv = player.getInventory();
             for (int i = Inventory.getSelectionSize(); i < inv.items.size(); i++) {
@@ -303,6 +307,57 @@ public final class Tetris {
         return h;
     }
 
+    /**
+     * Auto-refill: when a hotbar slot's last item is used up (placed, eaten, broken), the same item comes up from
+     * the grids, or the stash if that's turned on and you're home. Moving a whole stack away doesn't count: only
+     * a slot that went from one item to none.
+     */
+    private static void refillHotbar(ServerPlayer player, Runtime rt, InvData data) {
+        Inventory inv = player.getInventory();
+        // Only while playing: with a screen open, an emptied slot is the player moving things around.
+        boolean playing = !rt.open && player.containerMenu == player.inventoryMenu;
+        for (int i = 0; i < Inventory.getSelectionSize(); i++) {
+            ItemStack now = inv.items.get(i);
+            Item was = rt.hotbarItem[i];
+            if (playing && data.autoRefill && now.isEmpty() && was != null && rt.hotbarCount[i] == 1) {
+                ItemStack found = takeForRefill(player, data, was);
+                if (!found.isEmpty()) {
+                    inv.items.set(i, found);
+                    rt.dirty = true;
+                    now = found;
+                }
+            }
+            rt.hotbarItem[i] = now.isEmpty() ? null : now.getItem();
+            rt.hotbarCount[i] = now.getCount();
+        }
+    }
+
+    private static ItemStack takeForRefill(ServerPlayer player, InvData data, Item item) {
+        for (GridId id : AUTO) {
+            for (Placed p : data.list(id)) {
+                if (p.stack.is(item)) {
+                    ItemStack out = p.stack.copy();
+                    p.stack.setCount(0);
+                    purge(data);
+                    return out;
+                }
+            }
+        }
+        Hideouts.Hideout home = data.refillFromStash ? Hideouts.at(player.serverLevel(), player.position()) : null;
+        if (home != null) {
+            for (Container c : Stash.containers(player.serverLevel(), home)) {
+                for (int s = 0; s < c.getContainerSize(); s++) {
+                    if (c.getItem(s).is(item)) {
+                        ItemStack out = c.removeItemNoUpdate(s);
+                        c.setChanged();
+                        return out;
+                    }
+                }
+            }
+        }
+        return ItemStack.EMPTY;
+    }
+
     /** Drops emptied stacks from the grids. True if anything changed. */
     private static boolean purge(InvData data) {
         boolean changed = false;
@@ -327,13 +382,13 @@ public final class Tetris {
                 for (int slot : g.overflow) {
                     overflow.add(c.container.getItem(slot).copy());
                 }
-                views.add(new TetrisNet.ContainerView(c.pos, c.name, g.width, g.height, g.view(), overflow, List.copyOf(g.overflow)));
+                views.add(new TetrisNet.ContainerView(c.pos, c.name, g.width, g.height, g.view(), overflow, List.copyOf(g.overflow), g.filter()));
             }
         }
         // Copies: on a single-player server the payload object reaches the client as is.
         ServerPlayNetworking.send(player, new TetrisNet.Sync(d.rig.copy(), d.backpack.copy(), copy(d.pockets), copy(d.rigItems),
                 copy(d.backpackItems), copy(d.pouch), tarkov.tier.width, tarkov.tier.height,
-                d.unsorted.stream().map(ItemStack::copy).toList(), home != null, views));
+                d.unsorted.stream().map(ItemStack::copy).toList(), home != null, views, d.autoRefill, d.refillFromStash));
     }
 
     private static List<Placed> copy(List<Placed> list) {
@@ -566,6 +621,21 @@ public final class Tetris {
         player.awardStat(state.getBlock() instanceof BarrelBlock ? net.minecraft.stats.Stats.OPEN_BARREL : net.minecraft.stats.Stats.OPEN_CHEST);
         sync(player);
         ServerPlayNetworking.send(player, new TetrisNet.Open(0));
+    }
+
+    /**
+     * Where things get put away: containers whose filter allows the item, narrowest filter first (a chest that only
+     * takes weapons beats one that takes everything), like RimWorld stockpiles.
+     */
+    private static List<Shown> routeFor(List<Shown> shown, ItemStack stack) {
+        List<Shown> out = new ArrayList<>();
+        for (Shown c : shown) {
+            if (StorageCategory.allows(c.grid().filter(), stack)) {
+                out.add(c);
+            }
+        }
+        out.sort((a, b) -> Integer.compare(Integer.bitCount(a.grid().filter()), Integer.bitCount(b.grid().filter())));
+        return out;
     }
 
     /** Puts a stack into a container's grid: top up first, then wherever it fits. Leaves the rest in the stack. */
@@ -883,6 +953,26 @@ public final class Tetris {
                 dst.set(source);
                 src.set(other);
             }
+        } else if (whole && (to.kind() == Loc.HAND || (to.kind() == Loc.EQUIP && to.a() != 4 && to.a() != 5))
+                && (from.kind() == Loc.GRID || from.kind() == Loc.CONTAINER || from.kind() == Loc.UNSORTED)) {
+            // Dropped on an occupied hotbar or equipment slot: swap, and the displaced item takes the moved one's place.
+            Ref dst = ref(player, data, to);
+            if (dst != null && !dst.get().isEmpty() && locked(player, data, to, dst.get()) == null
+                    && accepts(player, to, source) && source.getCount() <= slotLimit(to, source, null)) {
+                ItemStack other = dst.get();
+                src.set(ItemStack.EMPTY);
+                dst.set(source);
+                ItemStack back = insert(player, data, from, other, false, null);
+                if (!back.isEmpty() && from.kind() != Loc.UNSORTED) {
+                    back = insert(player, data, from, back, true, null);
+                }
+                if (!back.isEmpty()) {
+                    storeInGrids(player, data, back);
+                }
+                if (!back.isEmpty()) {
+                    data.unsorted.add(back);
+                }
+            }
         }
         rt(player).dirty = true;
     }
@@ -911,7 +1001,13 @@ public final class Tetris {
         } else {
             List<Shown> shown = containers(player);
             if (!shown.isEmpty()) {
-                for (Shown c : shown) {
+                // An opened chest takes it as asked; otherwise the stash puts it where its filters say.
+                List<Shown> targets = new ArrayList<>();
+                if (rt(player).container != null) {
+                    targets.add(shown.get(0));
+                }
+                targets.addAll(routeFor(rt(player).container != null ? shown.subList(1, shown.size()) : shown, stack));
+                for (Shown c : targets) {
                     storeIn(c, stack);
                     if (stack.isEmpty()) {
                         break;
@@ -961,7 +1057,7 @@ public final class Tetris {
                 List<Shown> shown = containers(player);
                 for (GridId id : AUTO) {
                     for (Placed p : data.list(id)) {
-                        for (Shown c : shown) {
+                        for (Shown c : routeFor(shown, p.stack)) {
                             storeIn(c, p.stack);
                             if (p.stack.isEmpty()) {
                                 break;
@@ -979,9 +1075,13 @@ public final class Tetris {
             }
             case 3 -> rt.container = null;
             case 4 -> rt.open = true;
+            case 8 -> organize(player);
+            case 6 -> data.autoRefill = !data.autoRefill;
+            case 7 -> data.refillFromStash = !data.refillFromStash;
             case 5 -> {
                 rt.open = false;
                 CraftGrid.returnAll(player);
+                rt.lastRecipe = null;
                 if (rt.container != null) {
                     BlockState state = player.level().getBlockState(rt.container);
                     player.level().playSound(null, rt.container, state.getBlock() instanceof BarrelBlock ? SoundEvents.BARREL_CLOSE
@@ -1051,8 +1151,40 @@ public final class Tetris {
         rt(player).dirty = true;
     }
 
+    /** ORGANIZE STASH: anything sitting in a container that doesn't allow it moves to one that does. */
+    static void organize(ServerPlayer player) {
+        List<Shown> shown = containers(player);
+        for (Shown c : shown) {
+            ContainerGrid g = c.grid();
+            int mask = g.filter();
+            boolean moved = false;
+            for (int slot = 0; slot < c.container.getContainerSize(); slot++) {
+                ItemStack stack = c.container.getItem(slot);
+                if (stack.isEmpty() || StorageCategory.allows(mask, stack)) {
+                    continue;
+                }
+                for (Shown target : routeFor(shown, stack)) {
+                    if (target != c) {
+                        storeIn(target, stack);
+                    }
+                    if (stack.isEmpty()) {
+                        break;
+                    }
+                }
+                if (stack.isEmpty()) {
+                    c.container.setItem(slot, ItemStack.EMPTY);
+                    moved = true;
+                }
+            }
+            if (moved) {
+                ContainerGrid.of(c.container, c.holder).save();
+                c.container.setChanged();
+            }
+        }
+    }
+
     /** A container's SORT (0) and TAKE ALL (1) buttons. */
-    static void containerAction(ServerPlayer player, int index, int action) {
+    static void containerAction(ServerPlayer player, int index, int action, int value) {
         if (!player.isAlive() || !active(player)) {
             return;
         }
@@ -1062,7 +1194,9 @@ public final class Tetris {
         }
         Shown c = shown.get(index);
         ContainerGrid g = c.grid();
-        if (action == 0) {
+        if (action == 2) {
+            g.setFilter(value);
+        } else if (action == 0) {
             g.sort();
         } else if (action == 1) {
             InvData data = data(player);
@@ -1207,7 +1341,8 @@ public final class Tetris {
         List<ItemStack> grid = new ArrayList<>();
         rt(player).craft.forEach(s -> grid.add(s.copy()));
         ServerPlayNetworking.send(player, new TetrisNet.CraftList(craftable(player), grid, preview.result().copy(), preview.needsTable(),
-                CraftGrid.materials(player), Hideouts.at(player.serverLevel(), player.position()) != null, nearTable(player)));
+                CraftGrid.materials(player), Hideouts.at(player.serverLevel(), player.position()) != null, nearTable(player),
+                rt(player).lastRecipe == null ? "" : rt(player).lastRecipe));
     }
 
     static List<TetrisNet.CraftEntry> craftable(ServerPlayer player) {

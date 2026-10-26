@@ -132,6 +132,15 @@ public final class TarkovNet {
         @Override public Type<CureEffect> type() { return TYPE; }
     }
 
+    /** Server to client: a short banner at the top of the screen (raid started, extracted, threat). */
+    public record Banner(String title, String subtitle, int color) implements CustomPacketPayload {
+        public static final Type<Banner> TYPE = payloadType("banner");
+        public static final StreamCodec<FriendlyByteBuf, Banner> CODEC = StreamCodec.of(
+                (buf, p) -> { buf.writeUtf(p.title); buf.writeUtf(p.subtitle); buf.writeInt(p.color); },
+                buf -> new Banner(buf.readUtf(), buf.readUtf(), buf.readInt()));
+        @Override public Type<Banner> type() { return TYPE; }
+    }
+
     /** Server to client: body-part health, conditions and painkiller time. */
     public record BodySync(float[] body, int[] conditions, int painkillerTicks) implements CustomPacketPayload {
         public static final Type<BodySync> TYPE = payloadType("body_sync");
@@ -163,6 +172,7 @@ public final class TarkovNet {
 
     static void register() {
         PayloadTypeRegistry.playS2C().register(BodySync.TYPE, BodySync.CODEC);
+        PayloadTypeRegistry.playS2C().register(Banner.TYPE, Banner.CODEC);
         PayloadTypeRegistry.playC2S().register(TreatPart.TYPE, TreatPart.CODEC);
         PayloadTypeRegistry.playC2S().register(CureEffect.TYPE, CureEffect.CODEC);
         PayloadTypeRegistry.playS2C().register(RaidState.TYPE, RaidState.CODEC);
