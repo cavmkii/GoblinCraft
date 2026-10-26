@@ -127,22 +127,27 @@ public class HideoutScreen extends Screen {
             g.pose().scale(0.75f, 0.75f, 1);
             g.renderItem(new ItemStack(item(c.icon())), 0, 0);
             g.pose().popPose();
-            String text = Math.min(c.have(), 9999) + "/" + c.need();
-            g.drawString(font, text, cx + 14, y + 29, c.have() >= c.need() ? 0xFF7CFC7C : 0xFFFF6666, false);
+            // Modules: put in so far / needed, plus what you could still add.
+            String text = Math.min(c.have(), 9999) + "/" + c.need() + (c.carry() > 0 ? " +" + c.carry() : "");
+            int color = c.have() >= c.need() ? 0xFF7CFC7C : c.have() + c.carry() >= c.need() ? 0xFFE0C060 : 0xFFFF6666;
+            g.drawString(font, text, cx + 14, y + 29, color, false);
             cx += 18 + font.width(text) + 6;
         }
 
         // Button / status on the right.
         int bx = x + w - 84;
         int by = y + 6;
-        boolean ready = e.status() == TarkovNet.Entry.READY;
+        boolean ready = e.status() == TarkovNet.Entry.READY || e.status() == TarkovNet.Entry.GIVE;
         boolean hover = mouseX >= bx && mouseX < bx + 78 && mouseY >= by && mouseY < by + 18;
         int bg = ready ? (hover ? 0xFF4C8C4C : 0xFF3A6A3A) : 0xFF2A2A30;
         g.fill(bx, by, bx + 78, by + 18, bg);
         String label = switch (e.status()) {
             case TarkovNet.Entry.READY -> e.kind() == TarkovNet.Entry.MODULE ? "BUILD" : "CRAFT";
+            case TarkovNet.Entry.GIVE -> "CONTRIBUTE";
             case TarkovNet.Entry.BUILDING -> e.progress() + "%";
             case TarkovNet.Entry.MAXED -> "MAX";
+            case TarkovNet.Entry.SHORT -> "NEED MORE";
+            case TarkovNet.Entry.BUSY -> "BUSY";
             default -> "LOCKED";
         };
         g.drawString(font, label, bx + (78 - font.width(label)) / 2, by + 5, ready ? 0xFFFFFFFF : 0xFF888888, false);
@@ -180,7 +185,7 @@ public class HideoutScreen extends Screen {
                 TarkovNet.Entry e = entries.get(i);
                 int y = listTop() + i * ROW - (int) scroll;
                 int bx = x0 + panelWidth() - 84;
-                if (e.status() == TarkovNet.Entry.READY && mouseX >= bx && mouseX < bx + 78 && mouseY >= y + 6 && mouseY < y + 24) {
+                if ((e.status() == TarkovNet.Entry.READY || e.status() == TarkovNet.Entry.GIVE) && mouseX >= bx && mouseX < bx + 78 && mouseY >= y + 6 && mouseY < y + 24) {
                     ClientPlayNetworking.send(new TarkovNet.HideoutAction(pos, e.kind(), e.id()));
                     return true;
                 }

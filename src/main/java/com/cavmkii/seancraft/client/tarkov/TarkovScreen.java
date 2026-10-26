@@ -404,7 +404,12 @@ public class TarkovScreen extends Screen {
         g.drawString(font, text, x, y, 0xFFE0C060, false);
     }
 
+    private int lastMx;
+    private int lastMy;
+
     private ItemStack renderGear(GuiGraphics g, int mx, int my) {
+        lastMx = mx;
+        lastMy = my;
         Loc hover = locAt(mx, my);
         ItemStack tip = stackAt(hover);
         TetrisNet.Sync s = ClientTetris.sync;
@@ -532,6 +537,16 @@ public class TarkovScreen extends Screen {
                 continue;
             }
             TetrisNet.ContainerView c = ClientTetris.sync.containers().get(sec.index);
+            for (int b = 0; b < 2; b++) {
+                int[] r = containerButton(y, b);
+                boolean hb = lastMx >= r[0] && lastMx < r[0] + r[2] && lastMy >= r[1] && lastMy < r[1] + 9;
+                g.fill(r[0], r[1], r[0] + r[2], r[1] + 9, hb ? 0xFF4C4C58 : 0xFF33333C);
+                g.pose().pushPose();
+                g.pose().translate(r[0] + 3, r[1] + 1.5f, 0);
+                g.pose().scale(0.75f, 0.75f, 1);
+                g.drawString(font, b == 0 ? "SORT" : "TAKE ALL", 0, 0, 0xFFDDDDDD, false);
+                g.pose().popPose();
+            }
             renderGrid(g, new GridRef(COL4, y + 10, c.width(), c.height(), c.items()));
             if (!c.overflow().isEmpty()) {
                 int oy0 = y + 10 + c.height() * C;
@@ -559,6 +574,11 @@ public class TarkovScreen extends Screen {
             case 5 -> stack.getItem() instanceof GearItem g && g.spec.kind == com.cavmkii.seancraft.tetris.GearSpec.Kind.BACKPACK;
             default -> false;
         };
+    }
+
+    /** x, y, width of a container section's SORT (0) or TAKE ALL (1) button; {@code y} is the section's on-screen top. */
+    private static int[] containerButton(int y, int which) {
+        return which == 0 ? new int[] {COL4 + COL4_W - 66, y - 1, 24} : new int[] {COL4 + COL4_W - 40, y - 1, 40};
     }
 
     private void renderHeld(GuiGraphics g, int mx, int my, Loc hover) {
@@ -867,6 +887,21 @@ public class TarkovScreen extends Screen {
             if (x >= BTN_X && x < BTN_X + BTN_W && y >= BTN_Y[i] && y < BTN_Y[i] + 14) {
                 ClientPlayNetworking.send(new TetrisNet.Action(i));
                 return true;
+            }
+        }
+        if (held.isEmpty() && x >= COL4 && x < COL4 + COL4_W) {
+            for (Section sec : sections()) {
+                if (sec.kind != Loc.CONTAINER) {
+                    continue;
+                }
+                int top = sec.y - (int) containerScroll;
+                for (int b = 0; b < 2; b++) {
+                    int[] r = containerButton(top, b);
+                    if (x >= r[0] && x < r[0] + r[2] && y >= r[1] && y < r[1] + 9 && top >= 0) {
+                        ClientPlayNetworking.send(new TetrisNet.ContainerAction(sec.index, b));
+                        return true;
+                    }
+                }
             }
         }
         Loc loc = locAt(x, y);

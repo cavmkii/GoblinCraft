@@ -216,6 +216,47 @@ public final class ContainerGrid {
         return true;
     }
 
+    /** Merges partial stacks, then repacks everything biggest first. */
+    public void sort() {
+        int size = container.getContainerSize();
+        for (int i = 0; i < size; i++) {
+            ItemStack a = container.getItem(i);
+            if (a.isEmpty()) {
+                continue;
+            }
+            for (int j = i + 1; j < size && a.getCount() < limit(a); j++) {
+                ItemStack b = container.getItem(j);
+                if (ItemStack.isSameItemSameComponents(a, b)) {
+                    int n = Math.min(b.getCount(), limit(a) - a.getCount());
+                    a.grow(n);
+                    b.shrink(n);
+                    if (b.isEmpty()) {
+                        container.setItem(j, ItemStack.EMPTY);
+                    }
+                }
+            }
+        }
+        List<Integer> slots = new ArrayList<>();
+        for (int i = 0; i < size; i++) {
+            if (!container.getItem(i).isEmpty()) {
+                slots.add(i);
+            }
+        }
+        slots.sort((x, y) -> {
+            int[] sx = ItemSize.of(container.getItem(x));
+            int[] sy = ItemSize.of(container.getItem(y));
+            int c = Integer.compare(sy[0] * sy[1], sx[0] * sx[1]);
+            return c != 0 ? c : container.getItem(x).getItem().toString().compareTo(container.getItem(y).getItem().toString());
+        });
+        pos.clear();
+        overflow.clear();
+        for (int slot : slots) {
+            if (!autoPlace(slot)) {
+                overflow.add(slot);
+            }
+        }
+    }
+
     public void forget(int slot) {
         pos.remove(slot);
     }

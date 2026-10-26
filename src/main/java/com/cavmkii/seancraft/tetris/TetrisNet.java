@@ -153,6 +153,14 @@ public final class TetrisNet {
         @Override public Type<PanelClick> type() { return TYPE; }
     }
 
+    /** Client to server: a container's own buttons. Action 0 sort, 1 take all. */
+    public record ContainerAction(int index, int action) implements CustomPacketPayload {
+        public static final Type<ContainerAction> TYPE = payloadType("inv_container_action");
+        public static final StreamCodec<RegistryFriendlyByteBuf, ContainerAction> CODEC = StreamCodec.of(
+                (buf, p) -> { buf.writeVarInt(p.index); buf.writeVarInt(p.action); }, buf -> new ContainerAction(buf.readVarInt(), buf.readVarInt()));
+        @Override public Type<ContainerAction> type() { return TYPE; }
+    }
+
     /**
      * Client to server: buttons. 0 sort, 1 transfer all to stash, 2 drop all unsorted, 3 close container,
      * 4 screen opened, 5 screen closed.
@@ -229,5 +237,6 @@ public final class TetrisNet {
         PayloadTypeRegistry.playC2S().register(Action.TYPE, Action.CODEC);
         PayloadTypeRegistry.playC2S().register(Craft.TYPE, Craft.CODEC);
         PayloadTypeRegistry.playC2S().register(PanelClick.TYPE, PanelClick.CODEC);
+        PayloadTypeRegistry.playC2S().register(ContainerAction.TYPE, ContainerAction.CODEC);
     }
 }

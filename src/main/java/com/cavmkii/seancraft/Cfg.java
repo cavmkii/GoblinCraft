@@ -26,6 +26,10 @@ public final class Cfg {
     public static boolean seanEnabled = true;
     public static double joeRespawnMinutes = 10;
     public static double seanRespawnMinutes = 20;
+    public static double stayMinutesMin = 20;
+    public static double stayMinutesMax = 40;
+    public static double awayMinutesMin = 30;
+    public static double awayMinutesMax = 60;
     public static double spawnDistanceMin = 60;
     public static double spawnDistanceMax = 140;
     public static double strandedMinutes = 5;
@@ -113,6 +117,10 @@ public final class Cfg {
         b("General", "SeanEnabled", "Spawn and maintain Sean in the world.", v -> seanEnabled = v, () -> seanEnabled);
         d("General", "JoeRespawnMinutes", "Minutes after Joe dies before he respawns.", v -> joeRespawnMinutes = v, () -> joeRespawnMinutes);
         d("General", "SeanRespawnMinutes", "Minutes after Sean dies before he respawns.", v -> seanRespawnMinutes = v, () -> seanRespawnMinutes);
+        d("General", "StayMinutesMin", "Joe and Sean come and go: each visit lasts between StayMinutesMin and StayMinutesMax.", v -> stayMinutesMin = v, () -> stayMinutesMin);
+        d("General", "StayMinutesMax", "See StayMinutesMin.", v -> stayMinutesMax = v, () -> stayMinutesMax);
+        d("General", "AwayMinutesMin", "After leaving, they're gone between AwayMinutesMin and AwayMinutesMax. 0 and 0 keeps them around all the time.", v -> awayMinutesMin = v, () -> awayMinutesMin);
+        d("General", "AwayMinutesMax", "See AwayMinutesMin.", v -> awayMinutesMax = v, () -> awayMinutesMax);
         d("General", "SpawnDistanceMin", "Minimum distance (blocks) from a player that Joe/Sean (re)spawn at.", v -> spawnDistanceMin = v, () -> spawnDistanceMin);
         d("General", "SpawnDistanceMax", "Maximum distance (blocks) from a player that Joe/Sean (re)spawn at. Spots outside loaded chunks are skipped.", v -> spawnDistanceMax = v, () -> spawnDistanceMax);
         d("General", "StrandedMinutes", "If no player has been within 128 blocks of Joe or Sean for this long, they turn up near a random player again.", v -> strandedMinutes = v, () -> strandedMinutes);

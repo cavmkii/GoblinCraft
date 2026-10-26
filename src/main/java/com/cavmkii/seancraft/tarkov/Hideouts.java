@@ -23,6 +23,8 @@ public final class Hideouts extends SavedData {
         public int building = -1;
         public long buildDone;
         public long buildStarted;
+        /** Materials put toward each module's next level so far, per cost line. */
+        public final int[][] given = new int[Module.values().length][];
 
         Hideout(BlockPos pos) {
             this.pos = pos;
@@ -30,6 +32,20 @@ public final class Hideouts extends SavedData {
 
         public int level(Module module) {
             return levels[module.ordinal()];
+        }
+
+        /** Contributions toward a module's next level, sized to its cost list. */
+        public int[] given(Module module) {
+            int i = module.ordinal();
+            int lines = level(module) < module.max() ? module.levels.get(level(module)).costs().size() : 0;
+            if (given[i] == null || given[i].length != lines) {
+                int[] fresh = new int[lines];
+                if (given[i] != null) {
+                    System.arraycopy(given[i], 0, fresh, 0, Math.min(lines, given[i].length));
+                }
+                given[i] = fresh;
+            }
+            return given[i];
         }
 
         public double radius() {
@@ -100,6 +116,11 @@ public final class Hideouts extends SavedData {
             h.building = c.contains("building") ? c.getInt("building") : -1;
             h.buildDone = c.getLong("buildDone");
             h.buildStarted = c.getLong("buildStarted");
+            for (Module m : Module.values()) {
+                if (c.contains("given_" + m.name())) {
+                    h.given[m.ordinal()] = c.getIntArray("given_" + m.name());
+                }
+            }
             data.list.add(h);
         }
         return data;
@@ -115,6 +136,11 @@ public final class Hideouts extends SavedData {
             c.putInt("building", h.building);
             c.putLong("buildDone", h.buildDone);
             c.putLong("buildStarted", h.buildStarted);
+            for (Module m : Module.values()) {
+                if (h.given[m.ordinal()] != null) {
+                    c.putIntArray("given_" + m.name(), h.given[m.ordinal()]);
+                }
+            }
             list.add(c);
         }
         tag.put("hideouts", list);
