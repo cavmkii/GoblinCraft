@@ -1,6 +1,5 @@
 package com.cavmkii.goblincraft.client.tarkov;
 
-import com.cavmkii.goblincraft.tarkov.TarkovContent;
 import com.cavmkii.goblincraft.tarkov.TarkovNet;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -9,10 +8,9 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.screens.MenuScreens;
 import org.lwjgl.glfw.GLFW;
 
-/** Client side of the raid loop: raid HUD, Hideout screen, secure container key. */
+/** Client side of the raid loop: raid HUD, Hideout screen, and the J (gear) and H (status) keys. */
 public final class ClientTarkov {
     public static TarkovNet.RaidState raid = new TarkovNet.RaidState(0, 0, 0, -1);
 
@@ -30,7 +28,6 @@ public final class ClientTarkov {
         KeyBindingHelper.registerKeyBinding(OPEN_SECURE);
         KeyBindingHelper.registerKeyBinding(OPEN_STATUS);
         ClientPlayNetworking.registerGlobalReceiver(TarkovNet.BodySync.TYPE, (payload, ctx) -> body = payload);
-        MenuScreens.register(TarkovContent.SECURE_MENU, SecureScreen::new);
         ClientPlayNetworking.registerGlobalReceiver(TarkovNet.RaidState.TYPE, (payload, ctx) -> raid = payload);
         ClientPlayNetworking.registerGlobalReceiver(TarkovNet.HideoutView.TYPE, (payload, ctx) -> {
             Minecraft mc = ctx.client();
@@ -42,16 +39,13 @@ public final class ClientTarkov {
         });
         ClientTickEvents.END_CLIENT_TICK.register(mc -> {
             while (OPEN_STATUS.consumeClick()) {
-                if (mc.player != null && mc.screen == null) {
-                    mc.setScreen(new StatusScreen());
-                }
+                ClientTetris.open(TarkovScreen.STATUS);
             }
             while (OPEN_SECURE.consumeClick()) {
-                if (mc.player != null && mc.screen == null) {
-                    ClientPlayNetworking.send(new TarkovNet.OpenSecure());
-                }
+                ClientTetris.open(TarkovScreen.GEAR);
             }
         });
         HudRenderCallback.EVENT.register(RaidHud::render);
+        ClientTetris.init();
     }
 }

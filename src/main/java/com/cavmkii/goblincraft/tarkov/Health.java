@@ -408,12 +408,13 @@ public final class Health {
         return did;
     }
 
-    /** STATUS screen: use the med in an inventory slot on a chosen part right away. */
+    /** STATUS screen: use a carried med (index into Tetris.carried) on a chosen part right away. */
     private static void treatFromScreen(ServerPlayer player, int slot, int partIndex) {
-        if (slot < 0 || slot >= player.getInventory().getContainerSize() || partIndex < 0 || partIndex >= BodyPart.values().length) {
+        java.util.List<ItemStack> carried = com.cavmkii.goblincraft.tetris.Tetris.carried(player);
+        if (slot < 0 || slot >= carried.size() || partIndex < 0 || partIndex >= BodyPart.values().length) {
             return;
         }
-        ItemStack stack = player.getInventory().getItem(slot);
+        ItemStack stack = carried.get(slot);
         if (!(stack.getItem() instanceof MedItem medItem)) {
             return;
         }

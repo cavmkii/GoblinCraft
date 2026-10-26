@@ -117,13 +117,6 @@ public final class TarkovNet {
         @Override public Type<HideoutAction> type() { return TYPE; }
     }
 
-    /** Client to server: open my secure container. */
-    public record OpenSecure() implements CustomPacketPayload {
-        public static final Type<OpenSecure> TYPE = payloadType("open_secure");
-        public static final StreamCodec<FriendlyByteBuf, OpenSecure> CODEC = StreamCodec.of((buf, p) -> { }, buf -> new OpenSecure());
-        @Override public Type<OpenSecure> type() { return TYPE; }
-    }
-
     /** Server to client: body-part health, conditions and painkiller time. */
     public record BodySync(float[] body, int[] conditions, int painkillerTicks) implements CustomPacketPayload {
         public static final Type<BodySync> TYPE = payloadType("body_sync");
@@ -159,6 +152,5 @@ public final class TarkovNet {
         PayloadTypeRegistry.playS2C().register(RaidState.TYPE, RaidState.CODEC);
         PayloadTypeRegistry.playS2C().register(HideoutView.TYPE, HideoutView.CODEC);
         PayloadTypeRegistry.playC2S().register(HideoutAction.TYPE, HideoutAction.CODEC);
-        PayloadTypeRegistry.playC2S().register(OpenSecure.TYPE, OpenSecure.CODEC);
     }
 }

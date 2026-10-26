@@ -1,11 +1,11 @@
 package com.cavmkii.goblincraft.tarkov;
 
+import com.cavmkii.goblincraft.tetris.Tetris;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
-import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BarrelBlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -46,7 +46,12 @@ public final class Stash {
 
     /** How many of a cost the player carries plus what's in the stash (if there is one). */
     public static int count(ServerPlayer player, Hideouts.Hideout hideout, Cost cost) {
-        int n = count(player.getInventory(), cost);
+        int n = 0;
+        for (ItemStack stack : Tetris.carried(player)) {
+            if (cost.matches(stack)) {
+                n += stack.getCount();
+            }
+        }
         if (hideout != null) {
             for (Container c : containers(player.serverLevel(), hideout)) {
                 n += count(c, cost);
@@ -73,7 +78,17 @@ public final class Stash {
             return;
         }
         for (Cost cost : costs) {
-            int left = take(player.getInventory(), cost, cost.count());
+            int left = cost.count();
+            for (ItemStack stack : Tetris.carried(player)) {
+                if (left <= 0) {
+                    break;
+                }
+                if (cost.matches(stack)) {
+                    int n = Math.min(left, stack.getCount());
+                    stack.shrink(n);
+                    left -= n;
+                }
+            }
             if (left > 0 && hideout != null) {
                 for (Container c : containers(player.serverLevel(), hideout)) {
                     left = take(c, cost, left);
@@ -87,7 +102,7 @@ public final class Stash {
 
     private static int count(Container container, Cost cost) {
         int n = 0;
-        int size = container instanceof Inventory inv ? inv.items.size() : container.getContainerSize();
+        int size = container.getContainerSize();
         for (int i = 0; i < size; i++) {
             ItemStack stack = container.getItem(i);
             if (cost.matches(stack)) {
@@ -98,7 +113,7 @@ public final class Stash {
     }
 
     private static int take(Container container, Cost cost, int amount) {
-        int size = container instanceof Inventory inv ? inv.items.size() : container.getContainerSize();
+        int size = container.getContainerSize();
         for (int i = 0; i < size && amount > 0; i++) {
             ItemStack stack = container.getItem(i);
             if (cost.matches(stack)) {

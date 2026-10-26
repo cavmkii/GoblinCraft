@@ -12,7 +12,6 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 
 /** STATUS: the body, each part's health and conditions, and the meds you carry. Click a med, then a part. */
@@ -63,9 +62,9 @@ public class StatusScreen extends Screen {
 
     private List<Integer> medSlots() {
         List<Integer> out = new ArrayList<>();
-        Inventory inv = minecraft.player.getInventory();
-        for (int i = 0; i < inv.getContainerSize(); i++) {
-            if (inv.getItem(i).getItem() instanceof MedItem) {
+        List<ItemStack> carried = ClientTetris.carried();
+        for (int i = 0; i < carried.size(); i++) {
+            if (carried.get(i).getItem() instanceof MedItem) {
                 out.add(i);
             }
         }
@@ -131,8 +130,9 @@ public class StatusScreen extends Screen {
         ly += 12;
         int mx = lx;
         String medTip = null;
+        List<ItemStack> carried = ClientTetris.carried();
         for (int slot : medSlots()) {
-            ItemStack stack = minecraft.player.getInventory().getItem(slot);
+            ItemStack stack = carried.get(slot);
             boolean sel = slot == selectedSlot;
             g.fill(mx, ly, mx + 20, ly + 20, sel ? 0xFF55FFFF : 0xFF2A2A30);
             g.fill(mx + 1, ly + 1, mx + 19, ly + 19, 0xFF3C3C44);

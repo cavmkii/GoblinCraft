@@ -3,11 +3,8 @@ package com.cavmkii.goblincraft.tarkov;
 import com.cavmkii.goblincraft.GoblinCraft;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
-import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerType;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.network.codec.ByteBufCodecs;
-import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Rarity;
@@ -40,9 +37,6 @@ public final class TarkovContent {
                     new MedItem(med, new Item.Properties().stacksTo(med.stack))));
         }
     }
-
-    public static final MenuType<SecureMenu> SECURE_MENU = Registry.register(BuiltInRegistries.MENU, GoblinCraft.id("secure"),
-            new ExtendedScreenHandlerType<>(SecureMenu::new, ByteBufCodecs.VAR_INT));
 
     private TarkovContent() {}
 

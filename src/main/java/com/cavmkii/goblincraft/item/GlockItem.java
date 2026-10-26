@@ -56,8 +56,7 @@ public class GlockItem extends Item {
         if (isAmmo(player.getOffhandItem())) {
             return player.getOffhandItem();
         }
-        for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
-            ItemStack stack = player.getInventory().getItem(i);
+        for (ItemStack stack : com.cavmkii.goblincraft.tetris.Tetris.carried(player)) {
             if (isAmmo(stack)) {
                 return stack;
             }

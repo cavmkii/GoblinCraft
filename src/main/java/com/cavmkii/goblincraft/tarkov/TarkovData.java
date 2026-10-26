@@ -7,7 +7,10 @@ import java.util.List;
 import net.minecraft.core.NonNullList;
 import net.minecraft.world.item.ItemStack;
 
-/** Per-player Tarkov state: the secure container and whether the starter kit was given. Kept through death. */
+/**
+ * Per-player Tarkov state: secure pouch tier, whether the starter kit was given, body health. Kept through death.
+ * {@code secure} is the old slot-based container, emptied into the pouch grid on first load.
+ */
 public final class TarkovData {
     public SecureTier tier = SecureTier.ALPHA;
     public final NonNullList<ItemStack> secure = NonNullList.withSize(SecureTier.KAPPA.slots(), ItemStack.EMPTY);

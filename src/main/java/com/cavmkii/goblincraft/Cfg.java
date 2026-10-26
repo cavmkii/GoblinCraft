@@ -157,7 +157,7 @@ public final class Cfg {
         d("BabyWars", "BabyHealthScale", "Baby health relative to Joe's scaled health.", v -> babyHealthScale = v, () -> babyHealthScale);
         d("BabyWars", "BabyDamageScale", "Baby damage relative to Joe's scaled damage.", v -> babyDamageScale = v, () -> babyDamageScale);
 
-        s("Raid", "DeathRule", "What happens to your inventory when you die outside a hideout. VANILLA: normal drops. KEEP_SECURE: normal drops, but the secure container stays with you. LOSE_EVERYTHING: no drops; everything outside the secure container is gone.",
+        s("Raid", "DeathRule", "What happens to your inventory when you die outside a hideout. VANILLA: normal drops. KEEP_SECURE: normal drops, but the secure pouch stays with you. LOSE_EVERYTHING: no drops; everything outside the secure pouch is gone.",
                 v -> raidDeathRule = DeathRule.valueOf(v.trim().toUpperCase(Locale.ROOT)), () -> raidDeathRule.name());
         d("Raid", "HideoutRadius", "Radius (blocks) of a Hideout Bench's safe zone before Perimeter upgrades.", v -> hideoutRadius = v, () -> hideoutRadius);
         b("Raid", "Hostility", "Threat rises the longer you stay out: elite mobs and hunting parties.", v -> raidHostility = v, () -> raidHostility);

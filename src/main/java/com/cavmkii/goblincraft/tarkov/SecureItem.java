@@ -9,7 +9,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 
-/** A bigger secure container. Use it to install it; your current container's contents move across. */
+/** A bigger secure pouch. Use it to install it; the pouch grid grows and keeps what is in it. */
 public class SecureItem extends Item {
     public final SecureTier tier;
 
@@ -24,12 +24,12 @@ public class SecureItem extends Item {
         if (player instanceof ServerPlayer serverPlayer) {
             TarkovData data = Tarkov.data(serverPlayer);
             if (data.tier.ordinal() >= tier.ordinal()) {
-                serverPlayer.displayClientMessage(Component.literal("Your secure container is already " + data.tier.label + "."), true);
+                serverPlayer.displayClientMessage(Component.literal("Your secure pouch is already " + data.tier.label + "."), true);
                 return InteractionResultHolder.fail(stack);
             }
             data.tier = tier;
             stack.shrink(1);
-            serverPlayer.displayClientMessage(Component.literal("Secure container upgraded to " + tier.label + " ("
+            serverPlayer.displayClientMessage(Component.literal("Secure pouch upgraded to " + tier.label + " ("
                     + tier.width + "x" + tier.height + ")."), true);
         }
         return InteractionResultHolder.sidedSuccess(stack, level.isClientSide);

@@ -46,7 +46,7 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * TarkoValheim's raid loop on the server. Outside every hideout is raid; the longer you're out, the higher the
- * threat (elite mobs, hunting parties). Dying in raid costs your kit, except the secure container. Hideout
+ * threat (elite mobs, hunting parties). Dying in raid costs your kit, except the secure pouch. Hideout
  * benches hold modules and craft hideout-only items from what you carry plus the stash.
  */
 public final class Tarkov {
@@ -105,7 +105,6 @@ public final class Tarkov {
             }
             openHideout(ctx.player(), payload.pos());
         });
-        ServerPlayNetworking.registerGlobalReceiver(TarkovNet.OpenSecure.TYPE, (payload, ctx) -> openSecure(ctx.player()));
     }
 
     // ================================================================== tick
@@ -160,7 +159,7 @@ public final class Tarkov {
             if (inRaid) {
                 rt.raidStart = now;
                 rt.announcedThreat = 0;
-                title(player, "RAID STARTED", "Die out here and you lose everything outside your secure container", ChatFormatting.RED);
+                title(player, "RAID STARTED", "Die out here and you lose everything outside your secure pouch", ChatFormatting.RED);
             } else if (rt.inRaid != null) {
                 title(player, "EXTRACTED", "Raid time " + clock(now - rt.raidStart), ChatFormatting.GREEN);
             }
@@ -373,54 +372,22 @@ public final class Tarkov {
         boolean raid = inRaid(player);
         Runtime rt = runtime(player);
         String time = rt.inRaid != null && rt.inRaid ? " Raid time " + clock(player.serverLevel().getGameTime() - rt.raidStart) + "." : "";
+        com.cavmkii.goblincraft.tetris.Tetris.onDeath(player, raid, Cfg.raidDeathRule);
         if (!raid) {
             return;
         }
-        TarkovData data = data(player);
         switch (Cfg.raidDeathRule) {
             case LOSE_EVERYTHING -> {
                 player.getInventory().clearContent();
-                player.sendSystemMessage(Component.literal("Killed in action." + time + " Everything outside your secure container is gone.")
+                player.sendSystemMessage(Component.literal("Killed in action." + time + " Everything outside your secure pouch is gone.")
                         .withStyle(ChatFormatting.DARK_RED));
             }
-            case KEEP_SECURE -> player.sendSystemMessage(Component.literal("Killed in action." + time + " Your secure container is safe.")
+            case KEEP_SECURE -> player.sendSystemMessage(Component.literal("Killed in action." + time + " Your secure pouch is safe.")
                     .withStyle(ChatFormatting.DARK_RED));
             case VANILLA -> {
-                // Secure contents drop with everything else.
-                for (int i = 0; i < data.tier.slots(); i++) {
-                    if (!data.secure.get(i).isEmpty()) {
-                        player.drop(data.secure.get(i), true, false);
-                        data.secure.set(i, ItemStack.EMPTY);
-                    }
-                }
+                // Everything drops, the secure pouch too (handled with the grids).
             }
         }
-    }
-
-    // ================================================================== secure container
-
-    private static void openSecure(ServerPlayer player) {
-        if (!player.isAlive()) {
-            return;
-        }
-        TarkovData data = data(player);
-        SecureTier tier = data.tier;
-        player.openMenu(new ExtendedScreenHandlerFactory<Integer>() {
-            @Override
-            public Integer getScreenOpeningData(ServerPlayer p) {
-                return tier.ordinal();
-            }
-
-            @Override
-            public Component getDisplayName() {
-                return Component.literal("Secure container (" + tier.label + ")");
-            }
-
-            @Override
-            public AbstractContainerMenu createMenu(int id, Inventory inventory, Player p) {
-                return new SecureMenu(id, inventory, tier, new SecureMenu.View(data.secure, tier.slots()));
-            }
-        });
     }
 
     // ================================================================== hideout bench
@@ -549,7 +516,11 @@ public final class Tarkov {
             return med.med.describe();
         }
         if (stack.getItem() instanceof SecureItem secure) {
-            return "Secure container, " + secure.tier.width + "x" + secure.tier.height + ". Use it to install.";
+            return "Secure pouch, " + secure.tier.width + "x" + secure.tier.height + ". Use it to install.";
+        }
+        if (stack.getItem() instanceof com.cavmkii.goblincraft.tetris.GearItem gear) {
+            return (gear.spec.kind == com.cavmkii.goblincraft.tetris.GearSpec.Kind.RIG ? "Rig, " : "Backpack, ")
+                    + gear.spec.gridWidth + "x" + gear.spec.gridHeight + " grid. Wear it on the GEAR tab.";
         }
         return "";
     }
