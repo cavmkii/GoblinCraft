@@ -2,6 +2,7 @@ package com.cavmkii.seancraft.client.tarkov;
 
 import com.cavmkii.seancraft.tarkov.Body;
 import com.cavmkii.seancraft.tarkov.BodyPart;
+import com.cavmkii.seancraft.tarkov.Injury;
 import com.cavmkii.seancraft.tarkov.Med;
 import com.cavmkii.seancraft.tarkov.TarkovContent;
 import com.cavmkii.seancraft.tarkov.TarkovNet;
@@ -24,27 +25,71 @@ final class EffectHud {
 
     private EffectHud() {}
 
-    private record Injury(ItemStack icon, String text, String cure, int color) {}
+    private record Wound(ItemStack icon, String text, String cure, int color) {}
 
-    private static List<Injury> injuries() {
+    private static int pct(float f) {
+        return Math.round(f * 100);
+    }
+
+    private static List<Wound> wounds() {
         TarkovNet.BodySync body = ClientTarkov.body;
-        List<Injury> out = new ArrayList<>();
+        List<Wound> out = new ArrayList<>();
         for (BodyPart p : BodyPart.values()) {
-            int c = body.conditions()[p.ordinal()];
-            if (body.body()[p.ordinal()] <= 0.0001f) {
-                out.add(new Injury(new ItemStack(Items.BARRIER), "Destroyed - " + p.label, "surgical kit", 0xFFFF5555));
+            int i = p.ordinal();
+            int c = body.conditions()[i];
+            if (body.body()[i] <= 0.0001f) {
+                out.add(new Wound(new ItemStack(Items.BARRIER), "Destroyed - " + p.label, "surgery", 0xFFFF5555));
             }
             if ((c & Body.HEAVY_BLEED) != 0) {
-                out.add(new Injury(new ItemStack(Items.RED_DYE), "Heavy bleed - " + p.label, "tourniquet", 0xFFFF5555));
+                out.add(new Wound(new ItemStack(Items.RED_DYE), "Heavy bleed " + pct(body.bleed()[i]) + "% - " + p.label, "tourniquet", 0xFFFF5555));
             }
             if ((c & Body.LIGHT_BLEED) != 0) {
-                out.add(new Injury(new ItemStack(Items.RED_DYE), "Light bleed - " + p.label, "bandage", 0xFFFF9966));
+                out.add(new Wound(new ItemStack(Items.RED_DYE), "Light bleed " + pct(body.bleed()[i]) + "% - " + p.label, "bandage", 0xFFFF9966));
             }
             if ((c & Body.FRACTURE) != 0) {
-                out.add(new Injury(new ItemStack(Items.BONE), "Fracture - " + p.label, "splint", 0xFFFFAA55));
+                out.add(new Wound(new ItemStack(Items.BONE), "Fracture " + pct(body.fracture()[i]) + "% - " + p.label, "splint", 0xFFFFAA55));
+            }
+            if (body.scar()[i] > 0.001f && body.body()[i] > 0.0001f) {
+                out.add(new Wound(new ItemStack(Items.GRAY_DYE), "Lasting damage " + pct(body.scar()[i]) + "% - " + p.label, "surgery case",
+                        0xFFB0B0B8));
             }
         }
         return out;
+    }
+
+    /** What the injuries are doing to you right now, as one or two short lines. */
+    private static List<String> penalties() {
+        Injury inj = ClientTarkov.body.injury();
+        List<String> lines = new ArrayList<>();
+        StringBuilder legs = new StringBuilder();
+        add(legs, "Walk", inj.move());
+        if (inj.noSprint()) {
+            legs.append(legs.isEmpty() ? "" : "  ").append("No sprint");
+        } else {
+            // Both modifiers multiply.
+            add(legs, "Sprint", (1 + inj.move()) * (1 + inj.sprint()) - 1);
+        }
+        add(legs, "Jump", inj.jump());
+        StringBuilder arms = new StringBuilder();
+        add(arms, "Swing", inj.damage());
+        add(arms, "Mining", inj.mining());
+        if (inj.aim() >= 0.5f) {
+            arms.append(arms.isEmpty() ? "" : "  ").append("Aim ±").append(Math.round(inj.aim())).append("°");
+        }
+        if (!legs.isEmpty()) {
+            lines.add(legs.toString());
+        }
+        if (!arms.isEmpty()) {
+            lines.add(arms.toString());
+        }
+        return lines;
+    }
+
+    private static void add(StringBuilder sb, String name, float value) {
+        int v = Math.round(value * 100);
+        if (v != 0) {
+            sb.append(sb.isEmpty() ? "" : "  ").append(name).append(' ').append(v).append('%');
+        }
     }
 
     private record Chip(TextureAtlasSprite sprite, ItemStack item, int ticks, boolean bad) {}
@@ -74,10 +119,10 @@ final class EffectHud {
     /** Draws upward from {@code bottom}; returns the new top. */
     static int render(GuiGraphics g, Minecraft mc, int x, int bottom) {
         int y = bottom;
-        List<Injury> injuries = injuries();
+        List<Wound> injuries = wounds();
         y -= injuries.size() * 10;
         int line = y;
-        for (Injury i : injuries) {
+        for (Wound i : injuries) {
             g.pose().pushPose();
             g.pose().translate(x, line, 0);
             g.pose().scale(0.5f, 0.5f, 1);
@@ -94,6 +139,22 @@ final class EffectHud {
                 g.pose().popPose();
             }
             line += 10;
+        }
+
+        // Penalties, small, above the injuries; cyan while painkillers are taking the edge off.
+        List<String> penalties = penalties();
+        if (!penalties.isEmpty()) {
+            boolean pain = ClientTarkov.body.painkillerTicks() > 0;
+            y -= penalties.size() * 8 + 1;
+            int py = y;
+            for (String p : penalties) {
+                g.pose().pushPose();
+                g.pose().translate(x, py, 0);
+                g.pose().scale(0.75f, 0.75f, 1);
+                g.drawString(mc.font, p, 0, 0, pain ? 0xFF7FE0E0 : 0xFFFFB060, true);
+                g.pose().popPose();
+                py += 8;
+            }
         }
 
         List<Chip> chips = chips(mc);

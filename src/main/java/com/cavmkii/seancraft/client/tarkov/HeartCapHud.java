@@ -11,8 +11,9 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
 
 /**
- * Hearts that belong to destroyed body parts can't be healed (food, potions, meds) until a surgical kit restores
- * the part. They're drawn over the vanilla hearts as grey, crossed-out hearts.
+ * Hearts that belong to destroyed body parts can't be healed (food, potions, meds) until surgery restores the
+ * part, and lasting damage from a surgical kit locks part of that part's hearts until a surgery case. They're
+ * drawn over the vanilla hearts as grey, crossed-out hearts.
  */
 public final class HeartCapHud {
     private static final ResourceLocation HEART = ResourceLocation.withDefaultNamespace("hud/heart/full");
@@ -25,7 +26,7 @@ public final class HeartCapHud {
         if (player == null || mc.options.hideGui || player.isCreative() || player.isSpectator() || mc.gameMode == null) {
             return;
         }
-        float capFraction = Body.capFraction(ClientTarkov.body.body());
+        float capFraction = Body.capFraction(ClientTarkov.body.body(), ClientTarkov.body.scar());
         if (capFraction >= 0.999f) {
             return;
         }

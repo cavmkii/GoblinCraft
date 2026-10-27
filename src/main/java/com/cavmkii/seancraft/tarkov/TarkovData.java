@@ -22,6 +22,15 @@ public final class TarkovData {
     /** Conditions per body part, as {@link Body} bit flags. */
     public final int[] conditions = new int[7];
     public int painkillerTicks;
+    /** Bleed severity per part, 0-1. At 0.5 and up it's a heavy bleed. Kept in step with {@link #conditions}. */
+    public final float[] bleed = new float[7];
+    /** Fracture severity per part, 0-1. */
+    public final float[] fracture = new float[7];
+    /**
+     * Lasting damage per part, 0-1: the share of the part's health it can't get back. Left by a surgical kit; a
+     * surgery case clears it.
+     */
+    public final float[] scar = new float[7];
     /** Whether a new player has been placed at a spawn point yet. */
     public boolean placedAtSpawn;
 
@@ -45,8 +54,11 @@ public final class TarkovData {
                 return list;
             }),
             Codec.INT.optionalFieldOf("painkiller", 0).forGetter(d -> d.painkillerTicks),
-            Codec.BOOL.optionalFieldOf("placedAtSpawn", false).forGetter(d -> d.placedAtSpawn)
-    ).apply(i, (tier, secure, starter, intel, body, conditions, painkiller, placed) -> {
+            Codec.BOOL.optionalFieldOf("placedAtSpawn", false).forGetter(d -> d.placedAtSpawn),
+            Codec.FLOAT.listOf().optionalFieldOf("bleed", List.of()).forGetter(d -> floats(d.bleed)),
+            Codec.FLOAT.listOf().optionalFieldOf("fracture", List.of()).forGetter(d -> floats(d.fracture)),
+            Codec.FLOAT.listOf().optionalFieldOf("scar", List.of()).forGetter(d -> floats(d.scar))
+    ).apply(i, (tier, secure, starter, intel, body, conditions, painkiller, placed, bleed, fracture, scar) -> {
         TarkovData d = new TarkovData();
         try {
             d.tier = SecureTier.valueOf(tier);
@@ -66,6 +78,24 @@ public final class TarkovData {
         }
         d.painkillerTicks = painkiller;
         d.placedAtSpawn = placed;
+        fill(d.bleed, bleed);
+        fill(d.fracture, fracture);
+        fill(d.scar, scar);
+        Body.migrate(d);
         return d;
     }));
+
+    private static List<Float> floats(float[] a) {
+        List<Float> list = new ArrayList<>();
+        for (float f : a) {
+            list.add(f);
+        }
+        return list;
+    }
+
+    private static void fill(float[] into, List<Float> from) {
+        for (int p = 0; p < from.size() && p < into.length; p++) {
+            into[p] = from.get(p);
+        }
+    }
 }

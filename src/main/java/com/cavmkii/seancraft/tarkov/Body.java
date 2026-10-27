@@ -11,6 +11,8 @@ public final class Body {
     public static final int LIGHT_BLEED = 1;
     public static final int HEAVY_BLEED = 2;
     public static final int FRACTURE = 4;
+    /** Bleed severity from which it counts as a heavy bleed (needs a tourniquet). */
+    public static final float HEAVY = 0.5f;
 
     private static final float EPS = 0.0001f;
 
@@ -33,36 +35,110 @@ public final class Body {
         return false;
     }
 
+    /**
+     * Turns conditions on or off. The severities are what count; the flags follow them. Turning one on without a
+     * severity gives it a middling one; turning a bleed off only clears the kind named (light or heavy).
+     */
     public static void set(TarkovData d, BodyPart p, int flag, boolean on) {
+        int i = p.ordinal();
         if (on) {
-            d.conditions[p.ordinal()] |= flag;
+            if ((flag & HEAVY_BLEED) != 0) {
+                d.bleed[i] = Math.max(d.bleed[i], 0.7f);
+            } else if ((flag & LIGHT_BLEED) != 0 && d.bleed[i] <= EPS) {
+                d.bleed[i] = 0.3f;
+            }
+            if ((flag & FRACTURE) != 0) {
+                d.fracture[i] = Math.max(d.fracture[i], 0.5f);
+            }
         } else {
-            d.conditions[p.ordinal()] &= ~flag;
+            if ((flag & LIGHT_BLEED) != 0 && d.bleed[i] < HEAVY || (flag & HEAVY_BLEED) != 0 && d.bleed[i] >= HEAVY) {
+                d.bleed[i] = 0;
+            }
+            if ((flag & FRACTURE) != 0) {
+                d.fracture[i] = 0;
+            }
         }
+        sync(d, i);
     }
 
     public static void clearAll(TarkovData d, int flag) {
-        for (int i = 0; i < d.conditions.length; i++) {
-            d.conditions[i] &= ~flag;
+        for (BodyPart p : BodyPart.values()) {
+            set(d, p, flag, false);
         }
+    }
+
+    /** Sets a part's flags from its severities. */
+    public static void sync(TarkovData d, int i) {
+        int c = d.conditions[i] & ~(LIGHT_BLEED | HEAVY_BLEED | FRACTURE);
+        if (d.bleed[i] > EPS) {
+            c |= d.bleed[i] >= HEAVY ? HEAVY_BLEED : LIGHT_BLEED;
+        }
+        if (d.fracture[i] > EPS) {
+            c |= FRACTURE;
+        }
+        d.conditions[i] = c;
+    }
+
+    /** Saves from before severities: give flagged conditions a middling one. */
+    public static void migrate(TarkovData d) {
+        for (int i = 0; i < d.conditions.length; i++) {
+            int c = d.conditions[i];
+            if ((c & HEAVY_BLEED) != 0 && d.bleed[i] <= EPS) {
+                d.bleed[i] = 0.7f;
+            } else if ((c & LIGHT_BLEED) != 0 && d.bleed[i] <= EPS) {
+                d.bleed[i] = 0.3f;
+            }
+            if ((c & FRACTURE) != 0 && d.fracture[i] <= EPS) {
+                d.fracture[i] = 0.5f;
+            }
+            sync(d, i);
+        }
+    }
+
+    /** Two severities on the same part stack without going past 100%. */
+    public static float combine(float a, float b) {
+        return 1 - (1 - Mth.clamp(a, 0, 1)) * (1 - Mth.clamp(b, 0, 1));
+    }
+
+    public static void addBleed(TarkovData d, BodyPart p, float severity) {
+        d.bleed[p.ordinal()] = combine(d.bleed[p.ordinal()], severity);
+        sync(d, p.ordinal());
+    }
+
+    public static void addFracture(TarkovData d, BodyPart p, float severity) {
+        d.fracture[p.ordinal()] = combine(d.fracture[p.ordinal()], severity);
+        sync(d, p.ordinal());
+    }
+
+    /** The most a part can heal to: lasting damage takes its share off the top. */
+    public static float cap(TarkovData d, int i) {
+        return 1 - Mth.clamp(d.scar[i], 0, 0.9f);
     }
 
     public static void reset(TarkovData d) {
         java.util.Arrays.fill(d.body, 1f);
         java.util.Arrays.fill(d.conditions, 0);
+        java.util.Arrays.fill(d.bleed, 0);
+        java.util.Arrays.fill(d.fracture, 0);
+        java.util.Arrays.fill(d.scar, 0);
         d.painkillerTicks = 0;
     }
 
-    /** Health the parts add up to, as a fraction of max health. */
-    /** Share of max health still reachable: destroyed parts lock theirs away until a surgical kit restores them. */
-    public static float capFraction(float[] body) {
+    /**
+     * Share of max health still reachable: destroyed parts lock theirs away until surgery restores them, and lasting
+     * damage locks part of a part's share.
+     */
+    public static float capFraction(float[] body, float[] scar) {
         float cap = 1;
         for (BodyPart p : BodyPart.values()) {
-            if (body[p.ordinal()] <= EPS) {
-                cap -= p.share;
-            }
+            int i = p.ordinal();
+            cap -= body[i] <= EPS ? p.share : Mth.clamp(scar[i], 0, 0.9f) * p.share;
         }
         return Math.max(0, cap);
+    }
+
+    public static float capFraction(TarkovData d) {
+        return capFraction(d.body, d.scar);
     }
 
     public static float total(TarkovData d) {
@@ -91,8 +167,8 @@ public final class Body {
             return 0;
         }
         float max = Math.max(1, maxHealth) * part.share;
-        float took = Math.min((1 - d.body[i]) * max, amount);
-        d.body[i] = Mth.clamp(d.body[i] + took / max, 0, 1);
+        float took = Math.max(0, Math.min((cap(d, i) - d.body[i]) * max, amount));
+        d.body[i] = Mth.clamp(d.body[i] + took / max, 0, cap(d, i));
         if (revive && d.body[i] < 0.05f) {
             d.body[i] = 0.05f;
         }
@@ -119,7 +195,7 @@ public final class Body {
                 }
                 float want = delta * p.share / weight;
                 float before = d.body[i];
-                d.body[i] = Mth.clamp(d.body[i] + want / p.share, 0, 1);
+                d.body[i] = Mth.clamp(d.body[i] + want / p.share, 0, Math.max(d.body[i], cap(d, i)));
                 left += want - (d.body[i] - before) * p.share;
             }
             delta = left;
@@ -127,12 +203,12 @@ public final class Body {
     }
 
     private static boolean eligible(TarkovData d, int i, float delta) {
-        return delta < 0 ? d.body[i] > EPS : d.body[i] > EPS && d.body[i] < 1 - EPS;
+        return delta < 0 ? d.body[i] > EPS : d.body[i] > EPS && d.body[i] < cap(d, i) - EPS;
     }
 
     private static void clamp(TarkovData d) {
         for (int i = 0; i < d.body.length; i++) {
-            d.body[i] = Mth.clamp(d.body[i], 0, 1);
+            d.body[i] = Mth.clamp(d.body[i], 0, cap(d, i));
         }
     }
 

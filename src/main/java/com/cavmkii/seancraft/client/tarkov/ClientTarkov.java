@@ -17,7 +17,7 @@ public final class ClientTarkov {
     public static TarkovNet.Banner banner;
     public static long bannerAt;
 
-    public static TarkovNet.BodySync body = new TarkovNet.BodySync(new float[] {1, 1, 1, 1, 1, 1, 1}, new int[7], 0);
+    public static TarkovNet.BodySync body = new TarkovNet.BodySync(new float[] {1, 1, 1, 1, 1, 1, 1}, new int[7], 0, new float[7], new float[7], new float[7]);
 
     public static final KeyMapping OPEN_STATUS = new KeyMapping("key.seancraft.status", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_H,
             "key.categories.seancraft");
@@ -52,6 +52,7 @@ public final class ClientTarkov {
                 ClientTetris.open(TarkovScreen.GEAR);
             }
         });
+        HudRenderCallback.EVENT.register(InjuryGlow::render);
         HudRenderCallback.EVENT.register(RaidHud::render);
         HudRenderCallback.EVENT.register(HeartCapHud::render);
         HudRenderCallback.EVENT.register(ClientTracker::render);

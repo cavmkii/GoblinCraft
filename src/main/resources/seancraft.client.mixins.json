@@ -5,7 +5,9 @@
   "compatibilityLevel": "JAVA_21",
   "client": [
     "ContainerScreenMixin",
-    "GuiEffectsMixin"
+    "GameRendererInjuryMixin",
+    "GuiEffectsMixin",
+    "LocalPlayerSprintMixin"
   ],
   "injectors": {
     "defaultRequire": 1

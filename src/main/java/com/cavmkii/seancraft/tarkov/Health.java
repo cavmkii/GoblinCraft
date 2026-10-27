@@ -19,6 +19,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.tags.ItemTags;
+import net.minecraft.util.Mth;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.world.damagesource.DamageTypes;
@@ -75,6 +76,11 @@ public final class Health {
             rt(newPlayer).dirty = true;
         });
         ServerTickEvents.END_SERVER_TICK.register(Health::tick);
+        net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents.ENTITY_LOAD.register((entity, level) -> {
+            if (entity instanceof net.minecraft.world.entity.projectile.AbstractArrow arrow) {
+                spreadShot(arrow);
+            }
+        });
         ServerPlayNetworking.registerGlobalReceiver(TarkovNet.TreatPart.TYPE, (payload, ctx) -> treatFromScreen(ctx.player(), payload.slot(), payload.part()));
     }
 
@@ -99,7 +105,7 @@ public final class Health {
         }
         if (fall) {
             if (frac >= 0.1f && player.getRandom().nextFloat() < Math.min(0.9f, frac * 2.5f)) {
-                inflict(player, Body.FRACTURE, part);
+                inflict(player, Body.FRACTURE, part, Math.min(1, Math.max(0.25f, frac * 3)));
             }
             return;
         }
@@ -109,13 +115,14 @@ public final class Health {
         }
         float cut = cutting(source);
         float crush = 1 - cut;
+        // Severity follows the size of the hit: a graze is a 10% bleed, a big cut can be a 100% one.
         if (frac >= 0.2f && player.getRandom().nextFloat() < Math.min(0.5f, (frac - 0.15f) * 2) * cut) {
-            inflict(player, Body.HEAVY_BLEED, part);
+            inflict(player, Body.HEAVY_BLEED, part, Math.min(1, Body.HEAVY + (frac - 0.2f) * 2));
         } else if (frac >= 0.06f && player.getRandom().nextFloat() < Math.min(0.6f, frac * 2.5f) * cut) {
-            inflict(player, Body.LIGHT_BLEED, part);
+            inflict(player, Body.LIGHT_BLEED, part, Math.min(0.45f, 0.1f + frac * 2));
         }
         if (part.limb() && frac >= 0.15f && player.getRandom().nextFloat() < Math.min(0.45f, (frac - 0.1f) * 1.5f) * crush) {
-            inflict(player, Body.FRACTURE, part);
+            inflict(player, Body.FRACTURE, part, Math.min(1, 0.2f + (frac - 0.1f) * 3));
         }
     }
 
@@ -179,14 +186,19 @@ public final class Health {
         return onRight ? BodyPart.RIGHT_LEG : BodyPart.LEFT_LEG;
     }
 
-    private static void inflict(ServerPlayer player, int flag, BodyPart part) {
+    /** Adds a bleed or fracture of some severity; another one on the same part stacks with it. */
+    private static void inflict(ServerPlayer player, int flag, BodyPart part, float severity) {
         TarkovData d = Tarkov.data(player);
-        if (Body.has(d, part, flag)) {
-            return;
+        int i = part.ordinal();
+        if (flag == Body.FRACTURE) {
+            Body.addFracture(d, part, severity);
+        } else {
+            Body.addBleed(d, part, severity);
         }
-        Body.set(d, part, flag, true);
         rt(player).dirty = true;
-        player.displayClientMessage(Component.literal(conditionName(flag) + " - " + part.label).withStyle(ChatFormatting.RED), true);
+        int pct = Math.round((flag == Body.FRACTURE ? d.fracture[i] : d.bleed[i]) * 100);
+        String name = flag == Body.FRACTURE ? "Fracture" : d.bleed[i] >= Body.HEAVY ? "Heavy bleed" : "Light bleed";
+        player.displayClientMessage(Component.literal(name + " " + pct + "% - " + part.label).withStyle(ChatFormatting.RED), true);
     }
 
     public static String conditionName(int flag) {
@@ -212,7 +224,7 @@ public final class Health {
             if (t % 5 == 0) {
                 reconcile(player);
             }
-            if (t % 10 == 0) {
+            if (t % 4 == 0) {
                 applyEffects(player, d);
             }
             if (t % 40 == 0) {
@@ -221,7 +233,7 @@ public final class Health {
             }
             if (rt.dirty && t % 5 == 0) {
                 rt.dirty = false;
-                ServerPlayNetworking.send(player, new TarkovNet.BodySync(d.body.clone(), d.conditions.clone(), d.painkillerTicks));
+                ServerPlayNetworking.send(player, TarkovNet.BodySync.of(d));
             }
         }
     }
@@ -235,7 +247,7 @@ public final class Health {
             healed += Body.heal(d, p, (float) (max * p.share * com.cavmkii.seancraft.Cfg.sleepHealPercent / 100), max, false);
         }
         if (healed > 0) {
-            player.setHealth(Math.min(max * Body.capFraction(d.body), player.getHealth() + healed));
+            player.setHealth(Math.min(max * Body.capFraction(d), player.getHealth() + healed));
             rt(player).dirty = true;
             player.displayClientMessage(Component.literal("You wake up feeling better.").withStyle(ChatFormatting.GREEN), true);
         }
@@ -249,7 +261,7 @@ public final class Health {
         if (!(entity instanceof ServerPlayer player) || player.isCreative() || player.isSpectator()) {
             return amount;
         }
-        float cap = player.getMaxHealth() * Body.capFraction(Tarkov.data(player).body);
+        float cap = player.getMaxHealth() * Body.capFraction(Tarkov.data(player));
         return Math.max(0, Math.min(amount, cap - player.getHealth()));
     }
 
@@ -274,13 +286,9 @@ public final class Health {
     private static void bleed(ServerPlayer player, TarkovData d, Runtime rt) {
         float max = player.getMaxHealth();
         for (BodyPart p : BodyPart.values()) {
-            float drain = 0;
-            if (Body.has(d, p, Body.HEAVY_BLEED)) {
-                drain += Math.max(0.5f, max * 0.02f);
-            }
-            if (Body.has(d, p, Body.LIGHT_BLEED)) {
-                drain += Math.max(0.15f, max * 0.006f);
-            }
+            // From a trickle at 10% to 2% of max health every 2 seconds at 100%.
+            float sev = d.bleed[p.ordinal()];
+            float drain = sev <= 0 ? 0 : Math.max(0.1f + 0.4f * sev, max * (0.004f + 0.016f * sev));
             if (drain > 0 && player.isAlive()) {
                 rt.bleeding = p;
                 // Bleeding ignores the usual hurt cooldown so several parts can drain at once.
@@ -298,17 +306,39 @@ public final class Health {
         return new DamageSource(type);
     }
 
-    private static boolean limbHurts(TarkovData d, BodyPart p) {
-        return Body.has(d, p, Body.FRACTURE) || Body.destroyed(d, p);
+    /** Spectrum penalties from {@link Injury}: walking, sprinting, jumping, swing strength and speed, mining. */
+    private static void applyEffects(ServerPlayer player, TarkovData d) {
+        Injury inj = Injury.of(d);
+        modifier(player, Attributes.MOVEMENT_SPEED, "injured_leg", inj.move());
+        modifier(player, Attributes.MOVEMENT_SPEED, "injured_sprint", player.isSprinting() ? inj.sprint() : 0);
+        modifier(player, Attributes.JUMP_STRENGTH, "injured_jump", inj.jump());
+        modifier(player, Attributes.ATTACK_DAMAGE, "injured_swing", inj.damage());
+        modifier(player, Attributes.ATTACK_SPEED, "injured_arm", inj.attackSpeed());
+        modifier(player, Attributes.BLOCK_BREAK_SPEED, "injured_arm_mining", inj.mining());
+        if (inj.noSprint() && player.isSprinting()) {
+            player.setSprinting(false);
+        }
     }
 
-    private static void applyEffects(ServerPlayer player, TarkovData d) {
-        boolean pain = d.painkillerTicks > 0;
-        boolean legs = !pain && (limbHurts(d, BodyPart.LEFT_LEG) || limbHurts(d, BodyPart.RIGHT_LEG));
-        boolean arms = !pain && (limbHurts(d, BodyPart.LEFT_ARM) || limbHurts(d, BodyPart.RIGHT_ARM));
-        modifier(player, Attributes.MOVEMENT_SPEED, "injured_leg", legs ? -0.35 : 0);
-        modifier(player, Attributes.ATTACK_SPEED, "injured_arm", arms ? -0.3 : 0);
-        modifier(player, Attributes.BLOCK_BREAK_SPEED, "injured_arm_mining", arms ? -0.3 : 0);
+    /** Arrows (and tridents) from someone with bad arms fly off line, more the worse the arms. */
+    private static void spreadShot(net.minecraft.world.entity.projectile.AbstractArrow arrow) {
+        if (arrow.tickCount > 0 || !(arrow.getOwner() instanceof ServerPlayer player)) {
+            return;
+        }
+        float aim = Injury.of(Tarkov.data(player)).aim();
+        if (aim <= 0.05f) {
+            return;
+        }
+        Vec3 v = arrow.getDeltaMovement();
+        double speed = v.length();
+        if (speed < 0.01) {
+            return;
+        }
+        var random = player.getRandom();
+        float yaw = (float) (random.nextGaussian() * aim * 0.5);
+        float pitch = (float) (random.nextGaussian() * aim * 0.5);
+        Vec3 turned = v.yRot(yaw * Mth.DEG_TO_RAD).xRot(pitch * Mth.DEG_TO_RAD);
+        arrow.setDeltaMovement(turned);
     }
 
     private static void modifier(ServerPlayer player, Holder<net.minecraft.world.entity.ai.attributes.Attribute> attribute, String name, double amount) {
@@ -356,6 +386,9 @@ public final class Health {
         if (med.limbsOnly && !p.limb()) {
             return false;
         }
+        if (med.restores() && d.scar[p.ordinal()] > 0.001f) {
+            return true;
+        }
         if (Body.destroyed(d, p)) {
             // A destroyed part needs surgery to come back, but any bandage can still stop it bleeding.
             return med.revives || med.stopsLight && Body.has(d, p, Body.LIGHT_BLEED) || med.stopsHeavy && Body.has(d, p, Body.HEAVY_BLEED);
@@ -384,7 +417,7 @@ public final class Health {
             }
             int score = (Body.destroyed(d, p) ? 1000 : 0) + (Body.has(d, p, Body.HEAVY_BLEED) ? 500 : 0)
                     + (Body.has(d, p, Body.LIGHT_BLEED) ? 200 : 0) + (Body.has(d, p, Body.FRACTURE) ? 100 : 0)
-                    + (int) ((1 - d.body[p.ordinal()]) * 99);
+                    + (int) ((1 - d.body[p.ordinal()]) * 99) + (med.restores() ? (int) (d.scar[p.ordinal()] * 300) : 0);
             if (score > bestScore) {
                 best = p;
                 bestScore = score;
@@ -409,7 +442,16 @@ public final class Health {
                 return false;
             }
             float max = player.getMaxHealth();
+            int i = part.ordinal();
+            if (med.restores() && d.scar[i] > 0.001f) {
+                d.scar[i] = 0;
+                did = true;
+            }
             if (med.revives && Body.destroyed(d, part)) {
+                if (!med.restores()) {
+                    // A surgical kit saves the part, but it never quite comes back.
+                    d.scar[i] = Math.max(d.scar[i], Med.KIT_SCAR);
+                }
                 Body.heal(d, part, 0, max, true);
                 did = true;
             }
@@ -439,6 +481,48 @@ public final class Health {
                     .withStyle(ChatFormatting.GREEN), true);
         }
         return did;
+    }
+
+    /** /seancraft injure: sets a condition on a part directly. Returns what happened, or null for an unknown kind. */
+    public static String injure(ServerPlayer player, BodyPart part, String kind, float severity) {
+        TarkovData d = Tarkov.data(player);
+        int i = part.ordinal();
+        float max = player.getMaxHealth();
+        switch (kind) {
+            case "bleed" -> {
+                d.bleed[i] = severity;
+                Body.sync(d, i);
+            }
+            case "fracture" -> {
+                d.fracture[i] = severity;
+                Body.sync(d, i);
+            }
+            case "scar" -> {
+                d.scar[i] = Math.min(0.9f, severity);
+                Body.heal(d, part, 0, max, false);
+            }
+            case "destroy" -> {
+                if (part == BodyPart.HEAD || part == BodyPart.THORAX) {
+                    return "Destroying the " + part.label.toLowerCase() + " would kill you; pick a limb or the stomach.";
+                }
+                Body.damage(d, part, d.body[i] * part.share * max, max);
+                player.setHealth(Math.max(1, Body.total(d) * max));
+            }
+            case "heal" -> {
+                d.bleed[i] = 0;
+                d.fracture[i] = 0;
+                d.scar[i] = 0;
+                Body.sync(d, i);
+                float used = Body.heal(d, part, max, max, true);
+                player.setHealth(Math.min(max, player.getHealth() + used));
+            }
+            default -> {
+                return null;
+            }
+        }
+        reconcile(player);
+        rt(player).dirty = true;
+        return part.label + ": " + kind + (kind.equals("destroy") || kind.equals("heal") ? "" : " " + Math.round(severity * 100) + "%");
     }
 
     /** STATUS screen: use a carried med (index into Tetris.carried) on a chosen part right away. */

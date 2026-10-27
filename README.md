@@ -82,10 +82,24 @@ The inventory screen has five tabs: GEAR, CRAFTING, SKILLS, STATUS and WEB. Crea
 ### Health
 
 - **Body parts.** Your health is split across 7 parts: head, thorax, stomach, two arms and two legs. Hits land on a part depending on where they came from, and falls hit your legs.
-- **Injuries.** Parts can bleed, fracture, or get destroyed. A destroyed head or thorax kills you.
-- **Locked hearts.** A destroyed limb locks away its share of your hearts. Food, regen and potions can't fill them until a surgical kit fixes the limb. Locked hearts show up dark and crossed out.
-- **On screen.** Bottom left shows your injuries with what fixes them (bandage, tourniquet, splint, surgical kit), and above that every effect you have, good or bad, as a small icon with the time left. That covers poison, painkillers, and ability effects like going invisible. It blinks yellow for the last 5 seconds. This replaces the vanilla effect icons in the top right, which don't show a timer.
-- **Meds:** bandage, tourniquet, splint, painkillers, field kit and surgical kit.
+- **Injuries.** Parts can bleed, fracture, or get destroyed. A destroyed head or thorax kills you. Bleeds and fractures have a severity from 1 to 100%, and how big the hit was decides how bad it is. Another one on the same part stacks with it. A bleed at 50% or more is a heavy bleed. Bleeding drains the part, faster the worse it is, and once the part's gone the rest of it comes out of the others.
+- **What injuries do.** It's all on a sliding scale, not on or off. A limb counts as its fracture severity, or 100% if it's destroyed, and two bad legs (or arms) count for more than one.
+  - **Legs:** up to 40% slower walking, slower sprinting on top of that, and up to 10% lower jumps. At 100% you can't sprint at all.
+  - **Arms:** up to 40% weaker swings, 30% slower swings, and arrows or tridents fly up to 10° off line. A drawn bow also wobbles on screen.
+  - **Mining** gets slower from bad arms, bad legs and bleeding, up to 70% slower.
+  - **Limp.** With a bad leg, every other step lands hard: your view dips and tips toward the bad side. Bad legs, bad arms and blood loss also make your view sway a little while you stand still.
+- **Painkillers** let you push through it for 5 minutes. Leg penalties drop to 30% and arm penalties to 50%, and you can always sprint. They don't stop bleeding.
+- **Surgery.**
+  - A **surgical kit** brings a destroyed part back, but it leaves lasting damage: that part only heals to 65% from then on, and it acts like a mild fracture for its penalties.
+  - A **surgery case** (2x2, Medstation level 3, rare in chests) brings a part back to new, lasting damage and all.
+- **Locked hearts.** A destroyed part locks away its share of your hearts, and lasting damage locks part of a part's share. Food, regen and potions can't fill them. Locked hearts show up dark and crossed out.
+- **On screen.**
+  - Bottom left lists your injuries with their severity and what fixes them.
+  - Above that, a small line shows what they're doing to you right now, like `Walk -24%  Sprint -38%  Jump -6%`. It turns cyan while painkillers are taking the edge off.
+  - Above that, every effect you have, good or bad, shows as a small icon with the time left. That covers poison, painkillers, and ability effects like going invisible. It blinks yellow for the last 5 seconds. This replaces the vanilla effect icons in the top right, which don't show a timer.
+  - The edges of the screen glow while you're hurt: pulsing red while you bleed, white for a fracture, grey for a destroyed part. They get stronger the worse it is.
+  - The STATUS tab shows every part's severities and lasting damage.
+- **Meds:** bandage (light bleeds), tourniquet (any bleed), splint (fractures), painkillers, field kit, surgical kit and surgery case.
   - Use one from the hotbar and it treats whatever needs it most.
   - Or pick the body part yourself on the STATUS tab.
   - Meds show up in chests too.
@@ -93,7 +107,7 @@ The inventory screen has five tabs: GEAR, CRAFTING, SKILLS, STATUS and WEB. Crea
   - milk clears everything;
   - honey cures poison;
   - an antidote (made at the Medstation) cures every bad effect.
-- **Sleeping** through the night heals every body part that isn't destroyed by 50% of its max (`Raid.SleepHealPercent`). Destroyed ones still need a surgical kit.
+- **Sleeping** through the night heals every body part that isn't destroyed by 50% of its max (`Raid.SleepHealPercent`). Destroyed ones still need surgery, and sleep can't get past lasting damage.
 
 ### Weapons and armor from parts
 
@@ -147,6 +161,7 @@ There's only ever one Joe and one Sean, and they're not always around. Each visi
   - `/seancraft where` shows where Joe and Sean are.
   - `/seancraft summon joe|sean`, `/seancraft babywars start|stop` and `/seancraft reload` need op.
   - `/character xp|skill|reset` is for testing the character system (op).
+  - `/seancraft injure <part> <bleed|fracture|scar|destroy|heal> [percent]` sets an injury on yourself, for testing (op).
 
 ## Works with
 
