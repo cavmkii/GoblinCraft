@@ -45,6 +45,7 @@ public final class SeanCraftClient implements ClientModInitializer {
         EntityRendererRegistry.register(RpgContent.SKILL_PROJECTILE, ctx -> new ThrownItemRenderer<>(ctx, 1.25f, true));
         ClientRpg.init();
         ClientTarkov.init();
+        com.cavmkii.seancraft.client.carry.ClientCarry.init();
         net.minecraft.client.gui.screens.MenuScreens.register(com.cavmkii.seancraft.parts.PartItems.BENCH_MENU,
                 com.cavmkii.seancraft.client.parts.WeaponBenchScreen::new);
         ItemTooltipCallback.EVENT.register((stack, context, type, lines) -> {

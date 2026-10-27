@@ -115,6 +115,39 @@ public final class TarkovNet {
         @Override public Type<HideoutView> type() { return TYPE; }
     }
 
+    /**
+     * Server to client: the stations in the hideout you're in, one of each kind ("hideout", "weapon_bench",
+     * "crafting_table"), for the tabs along the top of their screens.
+     */
+    public record StationList(List<String> kinds, List<BlockPos> positions) implements CustomPacketPayload {
+        public static final Type<StationList> TYPE = payloadType("stations");
+        public static final StreamCodec<FriendlyByteBuf, StationList> CODEC = StreamCodec.of((buf, p) -> {
+            buf.writeVarInt(p.kinds.size());
+            for (int i = 0; i < p.kinds.size(); i++) {
+                buf.writeUtf(p.kinds.get(i));
+                buf.writeBlockPos(p.positions.get(i));
+            }
+        }, buf -> {
+            int n = buf.readVarInt();
+            List<String> kinds = new ArrayList<>();
+            List<BlockPos> positions = new ArrayList<>();
+            for (int i = 0; i < n; i++) {
+                kinds.add(buf.readUtf());
+                positions.add(buf.readBlockPos());
+            }
+            return new StationList(kinds, positions);
+        });
+        @Override public Type<StationList> type() { return TYPE; }
+    }
+
+    /** Client to server: open the station at a position (from a tab), if it's in your hideout. */
+    public record OpenStation(BlockPos pos) implements CustomPacketPayload {
+        public static final Type<OpenStation> TYPE = payloadType("open_station");
+        public static final StreamCodec<FriendlyByteBuf, OpenStation> CODEC =
+                StreamCodec.of((buf, p) -> buf.writeBlockPos(p.pos), buf -> new OpenStation(buf.readBlockPos()));
+        @Override public Type<OpenStation> type() { return TYPE; }
+    }
+
     /** Client to server: build a module or craft a recipe at a bench (kind -1 just refreshes). */
     public record HideoutAction(BlockPos pos, int kind, String id) implements CustomPacketPayload {
         public static final Type<HideoutAction> TYPE = payloadType("hideout_action");
@@ -198,5 +231,7 @@ public final class TarkovNet {
         PayloadTypeRegistry.playS2C().register(RaidState.TYPE, RaidState.CODEC);
         PayloadTypeRegistry.playS2C().register(HideoutView.TYPE, HideoutView.CODEC);
         PayloadTypeRegistry.playC2S().register(HideoutAction.TYPE, HideoutAction.CODEC);
+        PayloadTypeRegistry.playS2C().register(StationList.TYPE, StationList.CODEC);
+        PayloadTypeRegistry.playC2S().register(OpenStation.TYPE, OpenStation.CODEC);
     }
 }

@@ -40,6 +40,7 @@ public final class SeanCraft implements ModInitializer {
         com.cavmkii.seancraft.parts.PartItems.init();
         com.cavmkii.seancraft.tetris.Tetris.init();
         Tarkov.init();
+        com.cavmkii.seancraft.carry.Carry.init();
         com.cavmkii.seancraft.compat.GrappleCompat.init();
 
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {

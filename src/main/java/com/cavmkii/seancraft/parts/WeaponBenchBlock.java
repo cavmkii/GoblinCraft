@@ -22,6 +22,9 @@ public class WeaponBenchBlock extends Block {
         if (!level.isClientSide) {
             player.openMenu(new SimpleMenuProvider((id, inventory, p) -> new WeaponBenchMenu(id, inventory, ContainerLevelAccess.create(level, pos)),
                     Component.literal("Weapon Bench")));
+            if (player instanceof net.minecraft.server.level.ServerPlayer sp) {
+                com.cavmkii.seancraft.tarkov.Stations.send(sp);
+            }
         }
         return InteractionResult.sidedSuccess(level.isClientSide);
     }

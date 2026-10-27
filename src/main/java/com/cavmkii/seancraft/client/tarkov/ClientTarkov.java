@@ -31,6 +31,7 @@ public final class ClientTarkov {
         KeyBindingHelper.registerKeyBinding(OPEN_SECURE);
         KeyBindingHelper.registerKeyBinding(OPEN_STATUS);
         ClientPlayNetworking.registerGlobalReceiver(TarkovNet.BodySync.TYPE, (payload, ctx) -> body = payload);
+        ClientPlayNetworking.registerGlobalReceiver(TarkovNet.StationList.TYPE, (payload, ctx) -> StationTabs.stations = payload);
         ClientPlayNetworking.registerGlobalReceiver(TarkovNet.Banner.TYPE, (payload, ctx) -> {
             banner = payload;
             bannerAt = net.minecraft.Util.getMillis();

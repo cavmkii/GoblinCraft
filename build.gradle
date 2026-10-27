@@ -21,6 +21,20 @@ processResources {
     filesMatching('fabric.mod.json') {
         expand 'version': project.version
     }
+    // Custom icons: drop a 16x16 PNG at assets/seancraft/textures/item/<item id>.png and that item's model uses it
+    // in the built jar, in place of the stand-in vanilla texture. See ICONS.md.
+    def itemTextures = file('src/main/resources/assets/seancraft/textures/item')
+    filesMatching('assets/seancraft/models/item/*.json') { details ->
+        def name = details.name.replace('.json', '')
+        if (new File(itemTextures, name + '.png').exists()) {
+            def first = true
+            details.filter { line ->
+                def out = first ? "{\"parent\": \"minecraft:item/generated\", \"textures\": {\"layer0\": \"seancraft:item/${name}\"}}" : ''
+                first = false
+                return out
+            }
+        }
+    }
 }
 
 tasks.withType(JavaCompile).configureEach {

@@ -122,6 +122,13 @@ public final class Tetris {
         }
     }
 
+    /** Opens the inventory screen on its CRAFTING tab, as a crafting table does. */
+    public static void openCrafting(ServerPlayer player) {
+        sendCraftList(player);
+        ServerPlayNetworking.send(player, new TetrisNet.Open(1));
+        com.cavmkii.seancraft.tarkov.Stations.send(player);
+    }
+
     /** The Tetris inventory is in charge for survival and adventure players. */
     public static boolean active(Player player) {
         return !player.isCreative() && !player.isSpectator();
@@ -145,14 +152,13 @@ public final class Tetris {
             rt.container = null;
         });
         UseBlockCallback.EVENT.register((player, level, hand, hit) -> {
-            if (!active(player) || player.isSecondaryUseActive()) {
+            if (!active(player) || player.isSecondaryUseActive() || com.cavmkii.seancraft.carry.Carry.carrying(player)) {
                 return InteractionResult.PASS;
             }
             BlockState state = level.getBlockState(hit.getBlockPos());
             if (state.is(Blocks.CRAFTING_TABLE)) {
                 if (player instanceof ServerPlayer sp) {
-                    sendCraftList(sp);
-                    ServerPlayNetworking.send(sp, new TetrisNet.Open(1));
+                    openCrafting(sp);
                 }
                 return InteractionResult.SUCCESS;
             }
@@ -1278,6 +1284,54 @@ public final class Tetris {
                 c.container.setChanged();
             }
         }
+        mergeAcross(shown);
+    }
+
+    /**
+     * Tops up part stacks across the stash: the same item spread over several chests in partial stacks gets poured
+     * together, earliest chest first, so it ends up in as few stacks as it can.
+     */
+    private static void mergeAcross(List<Shown> shown) {
+        List<int[]> partial = new ArrayList<>();
+        for (int ci = 0; ci < shown.size(); ci++) {
+            Container c = shown.get(ci).container;
+            for (int slot = 0; slot < c.getContainerSize(); slot++) {
+                ItemStack s = c.getItem(slot);
+                if (!s.isEmpty() && s.getCount() < Math.min(s.getMaxStackSize(), c.getMaxStackSize())) {
+                    partial.add(new int[] {ci, slot});
+                }
+            }
+        }
+        Set<Integer> changed = new HashSet<>();
+        for (int i = 0; i < partial.size(); i++) {
+            Container into = shown.get(partial.get(i)[0]).container;
+            ItemStack target = into.getItem(partial.get(i)[1]);
+            for (int j = partial.size() - 1; j > i && !target.isEmpty(); j--) {
+                int room = Math.min(target.getMaxStackSize(), into.getMaxStackSize()) - target.getCount();
+                if (room <= 0) {
+                    break;
+                }
+                Container from = shown.get(partial.get(j)[0]).container;
+                ItemStack source = from.getItem(partial.get(j)[1]);
+                if (source.isEmpty() || !ItemStack.isSameItemSameComponents(source, target)
+                        || !StorageCategory.allows(shown.get(partial.get(i)[0]).grid().filter(), source)) {
+                    continue;
+                }
+                int n = Math.min(room, source.getCount());
+                target.grow(n);
+                source.shrink(n);
+                if (source.isEmpty()) {
+                    from.setItem(partial.get(j)[1], ItemStack.EMPTY);
+                }
+                changed.add(partial.get(i)[0]);
+                changed.add(partial.get(j)[0]);
+            }
+        }
+        for (int ci : changed) {
+            Shown c = shown.get(ci);
+            ContainerGrid.of(c.container, c.holder).save();
+            c.container.setChanged();
+        }
     }
 
     /** A container's SORT (0) and TAKE ALL (1) buttons. */
@@ -1538,7 +1592,7 @@ public final class Tetris {
         rt(player).dirty = true;
     }
 
-    static void give(ServerPlayer player, ItemStack stack) {
+    public static void give(ServerPlayer player, ItemStack stack) {
         pickup(player, stack);
         if (!stack.isEmpty()) {
             InvData data = data(player);

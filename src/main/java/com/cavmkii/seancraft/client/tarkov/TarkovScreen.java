@@ -88,9 +88,11 @@ public class TarkovScreen extends Screen {
 
     @Override
     protected void init() {
-        scale = Math.min(1f, Math.min((width - 8) / (float) W, (height - TOP - 4) / (float) H));
+        // Room at the bottom for the station tabs (hideout, Weapon Bench...).
+        int bottom = 16;
+        scale = Math.min(1f, Math.min((width - 8) / (float) W, (height - TOP - 4 - bottom) / (float) H));
         ox = (width - W * scale) / 2f;
-        oy = TOP + Math.max(0, (height - TOP - H * scale) / 2f - 4);
+        oy = TOP + Math.max(0, (height - TOP - bottom - H * scale) / 2f - 4);
         status = new StatusScreen();
         status.init(minecraft, width, height - TOP);
         if (web == null) {
@@ -368,6 +370,9 @@ public class TarkovScreen extends Screen {
             }
         }
         renderTabs(g, mouseX, mouseY);
+        if (tab == CRAFTING) {
+            StationTabs.render(g, font, 0, height - 15, width, StationTabs.CRAFTING_TABLE, mouseX, mouseY);
+        }
     }
 
     private int tabX(int t) {
@@ -779,6 +784,8 @@ public class TarkovScreen extends Screen {
     private record CraftRow(StorageCategory header, int count, TetrisNet.CraftEntry entry, int y, int h) {}
 
     private static final int HEAD = 13;
+    /** Categories folded shut in the CRAFT list; kept while the game runs. */
+    private static final java.util.Set<StorageCategory> COLLAPSED = java.util.EnumSet.noneOf(StorageCategory.class);
 
     /**
      * The CRAFT list grouped by category, with each row's offset from the top. Outside a hideout the Hideout Bench
@@ -800,6 +807,11 @@ public class TarkovScreen extends Screen {
         for (var group : groups.entrySet()) {
             rows.add(new CraftRow(group.getKey(), group.getValue().size(), null, y, HEAD));
             y += HEAD;
+            // A search shows matches even in folded categories.
+            if (COLLAPSED.contains(group.getKey()) && search.isEmpty()) {
+                y += 2;
+                continue;
+            }
             for (TetrisNet.CraftEntry e : group.getValue()) {
                 rows.add(new CraftRow(null, 0, e, y, ROW));
                 y += ROW;
@@ -922,7 +934,13 @@ public class TarkovScreen extends Screen {
                 continue;
             }
             if (row.entry == null) {
-                g.drawString(font, row.header.label.toUpperCase(Locale.ROOT), 1, y + 3, 0xFFE0C060, false);
+                boolean folded = COLLAPSED.contains(row.header) && search.isEmpty();
+                boolean overHead = mx >= 0 && mx < LIST_W && my >= y && my < y + HEAD && my >= top;
+                if (overHead) {
+                    g.fill(0, y, LIST_W, y + HEAD - 1, 0xFF22222A);
+                }
+                g.drawString(font, (folded ? "▸ " : "▾ ") + row.header.label.toUpperCase(Locale.ROOT), 1, y + 3,
+                        overHead ? 0xFFFFF0A0 : 0xFFE0C060, false);
                 String n = String.valueOf(row.count);
                 g.drawString(font, n, LIST_W - 2 - font.width(n), y + 3, 0xFF666670, false);
                 continue;
@@ -1412,6 +1430,9 @@ public class TarkovScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (tab == CRAFTING && StationTabs.click(0, height - 15, width, StationTabs.CRAFTING_TABLE, mouseX, mouseY)) {
+            return true;
+        }
         for (int t = 0; t < TABS.length; t++) {
             int x = tabX(t);
             if (mouseX >= x && mouseX < x + 70 && mouseY >= 4 && mouseY < 20) {
@@ -1647,6 +1668,12 @@ public class TarkovScreen extends Screen {
         }
         double at = y - top + craftScroll;
         for (CraftRow row : craftRows()) {
+            if (row.entry == null && row.header != null && at >= row.y && at < row.y + HEAD) {
+                if (!COLLAPSED.remove(row.header)) {
+                    COLLAPSED.add(row.header);
+                }
+                return true;
+            }
             if (row.entry != null && at >= row.y && at < row.y + ROW - 2) {
                 ClientPlayNetworking.send(new TetrisNet.Craft(row.entry.id(), 0));
                 break;
