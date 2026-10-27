@@ -76,6 +76,10 @@ public class StatusScreen extends Screen {
         return out;
     }
 
+    private static int pct(float f) {
+        return Math.round(f * 100);
+    }
+
     @Override
     public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
         g.fill(0, 0, width, height, 0xE0101014);
@@ -101,9 +105,10 @@ public class StatusScreen extends Screen {
             g.fill(r[0], r[1], r[0] + r[2], r[1] + r[3], color);
             int c = body.conditions()[p.ordinal()];
             StringBuilder tags = new StringBuilder();
-            if ((c & Body.HEAVY_BLEED) != 0) tags.append("HB ");
-            else if ((c & Body.LIGHT_BLEED) != 0) tags.append("B ");
-            if ((c & Body.FRACTURE) != 0) tags.append("F");
+            int i = p.ordinal();
+            if ((c & Body.HEAVY_BLEED) != 0) tags.append("HB").append(pct(body.bleed()[i])).append(' ');
+            else if ((c & Body.LIGHT_BLEED) != 0) tags.append("B").append(pct(body.bleed()[i])).append(' ');
+            if ((c & Body.FRACTURE) != 0) tags.append("F").append(pct(body.fracture()[i]));
             if (tags.length() > 0) {
                 g.drawString(font, tags.toString().trim(), r[0] + 2, r[1] + 2, 0xFFFFFF55, true);
             }
@@ -114,14 +119,17 @@ public class StatusScreen extends Screen {
         int ly = figY();
         for (BodyPart p : BodyPart.values()) {
             float frac = body.body()[p.ordinal()];
-            String state = frac <= 0.0001f ? "DESTROYED" : String.format("%.0f / %.0f", frac * p.share * max, p.share * max);
+            float cap = 1 - body.scar()[p.ordinal()];
+            String state = frac <= 0.0001f ? "DESTROYED" : String.format("%.0f / %.0f", frac * p.share * max, cap * p.share * max);
             g.drawString(font, p.label, lx, ly, 0xFFFFFFFF, false);
             g.drawString(font, state, lx + 62, ly, frac <= 0.0001f ? 0xFFFF5555 : 0xFFAAAAAA, false);
             int c = body.conditions()[p.ordinal()];
             List<String> conds = new ArrayList<>();
-            if ((c & Body.HEAVY_BLEED) != 0) conds.add("heavy bleed");
-            if ((c & Body.LIGHT_BLEED) != 0) conds.add("light bleed");
-            if ((c & Body.FRACTURE) != 0) conds.add("fracture");
+            int i = p.ordinal();
+            if ((c & Body.HEAVY_BLEED) != 0) conds.add("heavy bleed " + pct(body.bleed()[i]) + "%");
+            if ((c & Body.LIGHT_BLEED) != 0) conds.add("light bleed " + pct(body.bleed()[i]) + "%");
+            if ((c & Body.FRACTURE) != 0) conds.add("fracture " + pct(body.fracture()[i]) + "%");
+            if (body.scar()[i] > 0.001f) conds.add("lasting damage " + pct(body.scar()[i]) + "%");
             if (!conds.isEmpty()) {
                 g.drawString(font, String.join(", ", conds), lx + 8, ly + 9, 0xFFFF7755, false);
                 ly += 9;

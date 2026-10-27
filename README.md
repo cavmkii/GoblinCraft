@@ -53,35 +53,53 @@ The inventory screen has five tabs: GEAR, CRAFTING, SKILLS, STATUS and WEB. Crea
   - **Q** drops one, Ctrl+Q drops the stack;
   - **R** rotates;
   - Esc lets go.
-- **Swapping.** Dropping something on a hotbar or armor slot that's already full swaps them. The item you bumped goes back where the new one came from, or into any free space.
+- **Swapping.** Dropping something on a hotbar or armor slot that's already full swaps them, and you end up holding the item you bumped, like vanilla. Put it wherever you want, or let go and it stays where the new one came from.
 - **Auto-refill.** When the last item in a hotbar slot gets used up (a block placed, food eaten, a tool broken), more of the same comes up from your grids. The toggles next to HOTBAR turn it off, or let it pull from the stash too (off by default).
 - **Pickups** fill pockets, then rig, then backpack. Weapons and tools go to the hotbar first. If nothing has room, the item stays on the ground.
 - **Rigs and backpacks** have to be empty before you can take them off. You start with a Scav vest (4x2), a Sling bag (3x3) and a 2x2 pouch. Bigger ones are made at the Hideout Bench.
 - **Chests and barrels** open on the GEAR tab as grids too. Where you put things stays put, while hoppers still work like normal. Each one has a SORT button (merges stacks and packs it tight) and a TAKE ALL button. In your hideout, every stash chest shows up there, and STASH ALL dumps your pockets, rig and backpack into them.
+- **Large chests** show up as one Large Chest everywhere, whether you open it or see it from the stash.
 - **Naming chests.** Click a chest's name to rename it, then hit Enter. The name shows up next to a picture of the block, so you can tell a chest from a barrel at a glance.
 - **Chest filters** work like RimWorld stockpiles. FILTER on a chest lets you allow or disallow kinds of things: weapons, ammo, armor & gear, tools, food, meds, parts, blocks and materials.
   - STASH ALL, and Shift-click with no chest open, put things where the filters say. Chests with narrower filters get first pick, so a weapons-only chest fills before a take-anything chest.
   - ORGANIZE STASH moves anything sitting in the wrong chest to one that allows it.
   - Filters only steer automatic moves. You can always put anything anywhere by hand. Sneak + use with an empty hand opens the old chest screen.
 - **Vanilla screens** like the crafting table, furnace and anvil show your grids beside them. Click a grid item to grab it, then drop it in a slot, or the other way round.
-- **Crafting.** The CRAFTING tab has a recipe list on the left and a crafting grid on the right. Right-clicking a crafting table opens the same tab.
+- **Furnaces** (and smokers and blast furnaces) list your fuel and anything that furnace can cook under the backpack, with a second row for each from the stash when you're in the hideout. Click one to put a stack in the right slot, or right-click for one. Tools, weapons and enchanted stuff are left off the fuel list so you don't burn your bow by accident.
+- **Crafting.** The CRAFTING tab has a recipe list on the left, grouped by category, and a crafting grid on the right. Right-clicking a crafting table opens the same tab.
   - Click a recipe and it gets laid out in the grid with what you have. Your hotbar, grids and stash all count.
   - Or lay it out yourself: click something in MATERIALS, then click a grid cell. Right-click puts down just one.
   - Click the result to craft, or Shift-click to craft as many as you can. The recipe you picked stays selected and lays itself out again after each craft, so you can keep clicking.
+  - PIN TO HUD under the result puts the selected recipe's ingredients on your gather list.
   - Anything left in the grid goes back when you close the screen.
   - Your hotbar shows under MATERIALS, so you can grab from it or drop things into it without switching tabs.
   - The RECIPES sub-tab shows every recipe, sorted by category. The ones you haven't found yet show up as ??????. You find a recipe by picking up one of its ingredients. Click a recipe to see what it needs and how much of it you have, then hit LAY OUT to put it in the grid, or PIN TO HUD to track the ingredients.
   - 3x3 recipes need a crafting table within 6 blocks, or you have to be in the hideout. Otherwise you get 2x2.
   - Outside a hideout, the tab tells you how to make a Hideout Bench and pins it to the top of the list.
-- **Gather list.** It's a to-do list for materials. Pin a recipe from RECIPES, hit TRACK on a hideout module (it adds whatever hasn't been put in yet), or hover an item and press T, and set how many you want with the - and + buttons (Shift does steps of 10). While you're out of the hideout, the list shows in the top left with how many you're carrying, and each line turns green when you have enough. It holds up to 6 things.
+- **Gather list.** It's a to-do list for materials. Pin a recipe from CRAFT or RECIPES, hit TRACK on a hideout module (it adds whatever hasn't been put in yet), or hover an item and press T, and set how many you want with the - and + buttons (Shift does steps of 10). While you're out of the hideout, the list shows in the top left with how many you're carrying, and each line turns green when you have enough. It holds up to 6 things.
 - **Ammo.** Bows and crossbows pull arrows from your rig, pockets or backpack.
 
 ### Health
 
 - **Body parts.** Your health is split across 7 parts: head, thorax, stomach, two arms and two legs. Hits land on a part depending on where they came from, and falls hit your legs.
-- **Injuries.** Parts can bleed, fracture, or get destroyed. A destroyed head or thorax kills you.
-- **Locked hearts.** A destroyed limb locks away its share of your hearts. Food, regen and potions can't fill them until a surgical kit fixes the limb. Locked hearts show up dark and crossed out.
-- **Meds:** bandage, tourniquet, splint, painkillers, field kit and surgical kit.
+- **Injuries.** Parts can bleed, fracture, or get destroyed. A destroyed head or thorax kills you. Bleeds and fractures have a severity from 1 to 100%, and how big the hit was decides how bad it is. Another one on the same part stacks with it. A bleed at 50% or more is a heavy bleed. Bleeding drains the part, faster the worse it is, and once the part's gone the rest of it comes out of the others.
+- **What injuries do.** It's all on a sliding scale, not on or off. A limb counts as its fracture severity, or 100% if it's destroyed, and two bad legs (or arms) count for more than one.
+  - **Legs:** up to 40% slower walking, slower sprinting on top of that, and up to 10% lower jumps. At 100% you can't sprint at all.
+  - **Arms:** up to 40% weaker swings, 30% slower swings, and arrows or tridents fly up to 10° off line. A drawn bow also wobbles on screen.
+  - **Mining** gets slower from bad arms, bad legs and bleeding, up to 70% slower.
+  - **Limp.** With a bad leg, every other step lands hard: your view dips and tips toward the bad side. Bad legs, bad arms and blood loss also make your view sway a little while you stand still.
+- **Painkillers** let you push through it for 5 minutes. Leg penalties drop to 30% and arm penalties to 50%, and you can always sprint. They don't stop bleeding.
+- **Surgery.**
+  - A **surgical kit** brings a destroyed part back, but it leaves lasting damage: that part only heals to 65% from then on, and it acts like a mild fracture for its penalties.
+  - A **surgery case** (2x2, Medstation level 3, rare in chests) brings a part back to new, lasting damage and all.
+- **Locked hearts.** A destroyed part locks away its share of your hearts, and lasting damage locks part of a part's share. Food, regen and potions can't fill them. Locked hearts show up dark and crossed out.
+- **On screen.**
+  - Bottom left lists your injuries with their severity and what fixes them.
+  - Above that, a small line shows what they're doing to you right now, like `Walk -24%  Sprint -38%  Jump -6%`. It turns cyan while painkillers are taking the edge off.
+  - Above that, every effect you have, good or bad, shows as a small icon with the time left. That covers poison, painkillers, and ability effects like going invisible. It blinks yellow for the last 5 seconds. This replaces the vanilla effect icons in the top right, which don't show a timer.
+  - The edges of the screen glow while you're hurt: pulsing red while you bleed, white for a fracture, grey for a destroyed part. They get stronger the worse it is.
+  - The STATUS tab shows every part's severities and lasting damage.
+- **Meds:** bandage (light bleeds), tourniquet (any bleed), splint (fractures), painkillers, field kit, surgical kit and surgery case.
   - Use one from the hotbar and it treats whatever needs it most.
   - Or pick the body part yourself on the STATUS tab.
   - Meds show up in chests too.
@@ -89,7 +107,7 @@ The inventory screen has five tabs: GEAR, CRAFTING, SKILLS, STATUS and WEB. Crea
   - milk clears everything;
   - honey cures poison;
   - an antidote (made at the Medstation) cures every bad effect.
-- **Sleeping** through the night heals every body part that isn't destroyed by 50% of its max (`Raid.SleepHealPercent`). Destroyed ones still need a surgical kit.
+- **Sleeping** through the night heals every body part that isn't destroyed by 50% of its max (`Raid.SleepHealPercent`). Destroyed ones still need surgery, and sleep can't get past lasting damage.
 
 ### Weapons and armor from parts
 
@@ -105,7 +123,7 @@ The inventory screen has five tabs: GEAR, CRAFTING, SKILLS, STATUS and WEB. Crea
 ### Character
 
 - **Levels.** You get class XP from killing mobs and mining ores, up to level 60. Each level gives a point for the passive web.
-- **The web (K)** has about 120 nodes and no fixed classes. Go straight down one branch and you're a pure warrior, ranger or caster, or mix them however you want. Some nodes unlock active skills, which go in your 5 ability slots. Each archetype has its own resource: rage, stamina or mana.
+- **The web (K)** has about 120 nodes and no fixed classes. Go straight down one branch and you're a pure warrior, ranger or caster, or mix them however you want. While you have points to spend, a small yellow "Unspent web points" note sits next to your ability bar. Some nodes unlock active skills, which go in your 5 ability slots. Each archetype has its own resource: rage, stamina or mana.
 - **Attributes.** Strength, Agility and Intelligence come from your skills and the web. Your highest one is your primary attribute, and it adds damage.
 - **Crits.** Every melee hit and arrow has a chance to crit. You start at 5%, Agility adds to it, and it caps at 75%. A crit does +50% damage, and Strength adds to that. Some web nodes add more of both. Your numbers are on the SKILLS tab.
 - **Skills** level up as you use them: swords, axes, blocking, mining, bows & crossbows, running, sneaking, swimming, enchanting, brewing, casting and farming. You lose 5% of your skill progress when you die. Firing a grappling hook (from the Grappling Hook Mod) also trains bows & crossbows.
@@ -143,6 +161,7 @@ There's only ever one Joe and one Sean, and they're not always around. Each visi
   - `/seancraft where` shows where Joe and Sean are.
   - `/seancraft summon joe|sean`, `/seancraft babywars start|stop` and `/seancraft reload` need op.
   - `/character xp|skill|reset` is for testing the character system (op).
+  - `/seancraft injure <part> <bleed|fracture|scar|destroy|heal> [percent]` sets an injury on yourself, for testing (op).
 
 ## Works with
 

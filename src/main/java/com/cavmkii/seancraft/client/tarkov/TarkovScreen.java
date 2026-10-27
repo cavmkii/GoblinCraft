@@ -12,6 +12,7 @@ import com.cavmkii.seancraft.tetris.InvData;
 import com.cavmkii.seancraft.tetris.ItemSize;
 import com.cavmkii.seancraft.tetris.Loc;
 import com.cavmkii.seancraft.tetris.Placed;
+import com.cavmkii.seancraft.tetris.StorageCategory;
 import com.cavmkii.seancraft.tetris.TetrisNet;
 import com.mojang.math.Axis;
 import java.util.ArrayList;
@@ -60,6 +61,9 @@ public class TarkovScreen extends Screen {
     private ItemStack held = ItemStack.EMPTY;
     private boolean heldRot;
     private int heldCount;
+    /** After dropping onto a full hotbar or gear slot: the sync count to wait past, then pick up what was bumped. */
+    private int swapSync = -1;
+    private int swapTick;
 
     private double containerScroll;
     private double craftScroll;
@@ -336,6 +340,7 @@ public class TarkovScreen extends Screen {
 
     @Override
     public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+        settleSwap();
         g.fill(0, 0, width, height, 0xF4101014);
         if (tab == STATUS || tab == WEB) {
             g.pose().pushPose();
@@ -626,10 +631,12 @@ public class TarkovScreen extends Screen {
         }
         String text = editing ? renameText + (ticks / 6 % 2 == 0 ? "_" : "") : c.name();
         g.pose().pushPose();
-        g.pose().translate(COL4 + 13, y + 1, 0);
-        g.pose().scale(0.75f, 0.75f, 1);
-        String fit = editing ? font.plainSubstrByWidth(text, (int) ((TITLE_W - 15) / 0.75f), true)
-                : font.plainSubstrByWidth(text, (int) ((TITLE_W - 15) / 0.75f));
+        // A name a little too long drops to a smaller size before it gets cut.
+        float k = font.width(text) * 0.75f <= TITLE_W - 15 ? 0.75f : 0.625f;
+        g.pose().translate(COL4 + 13, y + (k < 0.75f ? 2 : 1), 0);
+        g.pose().scale(k, k, 1);
+        String fit = editing ? font.plainSubstrByWidth(text, (int) ((TITLE_W - 15) / k), true)
+                : font.plainSubstrByWidth(text, (int) ((TITLE_W - 15) / k));
         g.drawString(font, fit, 0, 0, editing ? 0xFFFFFFFF : hover ? 0xFFFFF0A0 : 0xFFE0C060, false);
         g.pose().popPose();
     }
@@ -768,6 +775,51 @@ public class TarkovScreen extends Screen {
         return out;
     }
 
+    /** A line in the CRAFT list: a category header (entry null) or a recipe. */
+    private record CraftRow(StorageCategory header, int count, TetrisNet.CraftEntry entry, int y, int h) {}
+
+    private static final int HEAD = 13;
+
+    /**
+     * The CRAFT list grouped by category, with each row's offset from the top. Outside a hideout the Hideout Bench
+     * stays first, above the groups.
+     */
+    private List<CraftRow> craftRows() {
+        List<TetrisNet.CraftEntry> list = filtered();
+        List<CraftRow> rows = new ArrayList<>();
+        int y = 0;
+        String bench = com.cavmkii.seancraft.SeanCraft.id("hideout_bench").toString();
+        if (!ClientTetris.craft.inHideout() && !list.isEmpty() && list.get(0).id().equals(bench)) {
+            rows.add(new CraftRow(null, 0, list.remove(0), y, ROW));
+            y += ROW + 2;
+        }
+        java.util.Map<StorageCategory, List<TetrisNet.CraftEntry>> groups = new java.util.EnumMap<>(StorageCategory.class);
+        for (TetrisNet.CraftEntry e : list) {
+            groups.computeIfAbsent(StorageCategory.of(e.result()), k -> new ArrayList<>()).add(e);
+        }
+        for (var group : groups.entrySet()) {
+            rows.add(new CraftRow(group.getKey(), group.getValue().size(), null, y, HEAD));
+            y += HEAD;
+            for (TetrisNet.CraftEntry e : group.getValue()) {
+                rows.add(new CraftRow(null, 0, e, y, ROW));
+                y += ROW;
+            }
+            y += 2;
+        }
+        return rows;
+    }
+
+    /** Puts a recipe's ingredients on the gather list. */
+    private void pinRecipe(String id) {
+        var key = net.minecraft.resources.ResourceLocation.tryParse(id);
+        var holder = key == null ? null : minecraft.level.getRecipeManager().byKey(key).orElse(null);
+        if (holder != null && holder.value() instanceof net.minecraft.world.item.crafting.CraftingRecipe recipe) {
+            for (IngredientLine line : ingredientsOf(recipe)) {
+                ClientTracker.add(line.display.getItem(), line.need);
+            }
+        }
+    }
+
     // Layout of the CRAFTING tab: recipe list on the left, grid, result and materials on the right.
     private static final int LIST_W = 250;
     private static final int SEARCH_X = 100;
@@ -779,6 +831,9 @@ public class TarkovScreen extends Screen {
     private static final int RESULT_X = PX + 3 * CELL + 26;
     private static final int RESULT_Y = GRID_Y + CELL - 4;
     private static final int CLEAR_X = W - 40;
+    private static final int PIN_X = RESULT_X - 2;
+    private static final int PIN_Y = RESULT_Y + 50;
+    private static final int PIN_W = 62;
     private static final int MAT_Y = GRID_Y + 3 * CELL + 18;
     /** The hotbar, under the materials. */
     private static final int CRAFT_HOTBAR_Y = H - C;
@@ -851,21 +906,28 @@ public class TarkovScreen extends Screen {
             g.pose().popPose();
         }
 
-        // Recipe list.
-        List<TetrisNet.CraftEntry> list = filtered();
+        // Recipe list, grouped by category.
+        List<CraftRow> rows = craftRows();
         int top = listTop();
-        double max = Math.max(0, list.size() * ROW - (H - top));
+        int height = rows.isEmpty() ? 0 : rows.get(rows.size() - 1).y + rows.get(rows.size() - 1).h;
+        double max = Math.max(0, height - (H - top));
         craftScroll = Math.max(0, Math.min(max, craftScroll));
-        if (list.isEmpty()) {
+        if (rows.isEmpty()) {
             g.drawString(font, craft.entries().isEmpty() ? "Nothing you can make right now." : "No matches.", 0, top + 4, 0xFF666670, false);
         }
         g.enableScissor((int) ox, (int) (oy + top * scale), (int) (ox + LIST_W * scale), (int) (oy + H * scale));
-        for (int i = 0; i < list.size(); i++) {
-            int y = top + i * ROW - (int) craftScroll;
-            if (y + ROW < top || y > H) {
+        for (CraftRow row : rows) {
+            int y = top + row.y - (int) craftScroll;
+            if (y + row.h < top || y > H) {
                 continue;
             }
-            TetrisNet.CraftEntry e = list.get(i);
+            if (row.entry == null) {
+                g.drawString(font, row.header.label.toUpperCase(Locale.ROOT), 1, y + 3, 0xFFE0C060, false);
+                String n = String.valueOf(row.count);
+                g.drawString(font, n, LIST_W - 2 - font.width(n), y + 3, 0xFF666670, false);
+                continue;
+            }
+            TetrisNet.CraftEntry e = row.entry;
             boolean hover = mx >= 0 && mx < LIST_W && my >= y && my < y + ROW - 2 && my >= top;
             boolean selected = e.id().equals(craft.selected());
             g.fill(0, y, LIST_W, y + ROW - 2, selected ? 0xFF2E3A2E : hover ? 0xFF26262E : 0xFF1C1C22);
@@ -888,6 +950,11 @@ public class TarkovScreen extends Screen {
         boolean clearHover = mx >= CLEAR_X && mx < W && my >= 0 && my < 12;
         g.fill(CLEAR_X, 0, W, 12, clearHover ? 0xFF4C4C58 : 0xFF33333C);
         g.drawString(font, "CLEAR", CLEAR_X + (40 - font.width("CLEAR")) / 2, 2, 0xFFDDDDDD, false);
+        if (craft.selected() != null && !craft.selected().isEmpty()) {
+            boolean pinHover = mx >= PIN_X && mx < PIN_X + PIN_W && my >= PIN_Y && my < PIN_Y + 12;
+            g.fill(PIN_X, PIN_Y, PIN_X + PIN_W, PIN_Y + 12, pinHover ? 0xFF4C8C4C : 0xFF3A6A3A);
+            g.drawString(font, "PIN TO HUD", PIN_X + (PIN_W - font.width("PIN TO HUD")) / 2, PIN_Y + 2, 0xFFFFFFFF, false);
+        }
         for (int c = 0; c < 9; c++) {
             int x = PX + (c % 3) * CELL;
             int y = GRID_Y + (c / 3) * CELL;
@@ -1247,15 +1314,7 @@ public class TarkovScreen extends Screen {
                 return true;
             }
             if (x >= PX + 84 && x < PX + 164) {
-                for (RecipeSection sec : recipeSections()) {
-                    for (RecipeCell c : sec.cells) {
-                        if (c.holder.id().equals(selectedRecipe)) {
-                            for (IngredientLine line : ingredientsOf(c.holder.value())) {
-                                ClientTracker.add(line.display.getItem(), line.need);
-                            }
-                        }
-                    }
-                }
+                pinRecipe(selectedRecipe.toString());
                 return true;
             }
         }
@@ -1328,7 +1387,24 @@ public class TarkovScreen extends Screen {
 
     // ================================================================== input
 
+    /** Once the server has answered a swap, hold the bumped item where it landed, or let go if it went elsewhere. */
+    private void settleSwap() {
+        if (swapSync < 0 || ClientTetris.syncs <= swapSync) {
+            return;
+        }
+        ItemStack now = stackAt(heldFrom);
+        if (!held.isEmpty() && ItemStack.isSameItemSameComponents(now, held)) {
+            held = now;
+            Placed p = placedAt(heldFrom);
+            heldRot = p != null && p.rotated;
+            swapSync = -1;
+        } else if (ticks - swapTick > 10) {
+            dropHeld();
+        }
+    }
+
     private void dropHeld() {
+        swapSync = -1;
         heldFrom = null;
         held = ItemStack.EMPTY;
         heldCount = 0;
@@ -1420,7 +1496,22 @@ public class TarkovScreen extends Screen {
                 return true;
             }
             if (button == 0 && loc != null && !(loc.equals(heldFrom) && heldCount == 0 && !rotationChanged())) {
+                ItemStack there = stackAt(loc);
+                // A whole stack onto a full hotbar or gear slot swaps; the bumped item lands where this one was
+                // and ends up on the cursor, like vanilla.
+                boolean swap = heldCount == 0 && (loc.kind() == Loc.HAND || loc.kind() == Loc.EQUIP) && !there.isEmpty()
+                        && !ItemStack.isSameItemSameComponents(there, held) && heldFrom.kind() != Loc.UNSORTED
+                        && !(heldFrom.kind() == Loc.CONTAINER && heldFrom.b() < 0);
                 ClientPlayNetworking.send(new TetrisNet.Move(heldFrom, loc, heldRot, heldCount));
+                if (swap) {
+                    Loc back = heldFrom;
+                    dropHeld();
+                    heldFrom = back;
+                    held = there;
+                    swapSync = ClientTetris.syncs;
+                    swapTick = ticks;
+                    return true;
+                }
             }
             dropHeld();
             return true;
@@ -1464,6 +1555,10 @@ public class TarkovScreen extends Screen {
         if (x >= CLEAR_X && x < W && y >= 0 && y < 12) {
             dropHeld();
             ClientPlayNetworking.send(new TetrisNet.Craft("#clear", 0));
+            return true;
+        }
+        if (craft.selected() != null && !craft.selected().isEmpty() && x >= PIN_X && x < PIN_X + PIN_W && y >= PIN_Y && y < PIN_Y + 12) {
+            pinRecipe(craft.selected());
             return true;
         }
         if (overResult(x, y)) {
@@ -1546,14 +1641,16 @@ public class TarkovScreen extends Screen {
             dropHeld();
             return true;
         }
-        List<TetrisNet.CraftEntry> list = filtered();
         int top = listTop();
         if (x < 0 || x >= LIST_W || y < top) {
             return true;
         }
-        int i = (int) ((y - top + craftScroll) / ROW);
-        if (i >= 0 && i < list.size()) {
-            ClientPlayNetworking.send(new TetrisNet.Craft(list.get(i).id(), 0));
+        double at = y - top + craftScroll;
+        for (CraftRow row : craftRows()) {
+            if (row.entry != null && at >= row.y && at < row.y + ROW - 2) {
+                ClientPlayNetworking.send(new TetrisNet.Craft(row.entry.id(), 0));
+                break;
+            }
         }
         return true;
     }

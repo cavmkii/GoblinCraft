@@ -67,7 +67,8 @@ public final class TarkovLoot {
                 .add(entry(TarkovContent.MEDS.get(Med.SPLINT), 4, 1, 1))
                 .add(entry(TarkovContent.MEDS.get(Med.PAINKILLERS), 4, 1, 2))
                 .add(entry(TarkovContent.ANTIDOTE, 3, 1, 1))
-                .add(entry(TarkovContent.MEDS.get(Med.FIELD_KIT), 2, 1, 1));
+                .add(entry(TarkovContent.MEDS.get(Med.FIELD_KIT), 2, 1, 1))
+                .add(entry(TarkovContent.MEDS.get(Med.SURGERY_CASE), 1, 1, 1));
     }
 
     private static LootPool.Builder supplies() {

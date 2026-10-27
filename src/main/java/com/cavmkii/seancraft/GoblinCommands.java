@@ -1,18 +1,23 @@
 package com.cavmkii.seancraft;
 
 import com.cavmkii.seancraft.entity.Wander;
+import com.cavmkii.seancraft.tarkov.BodyPart;
+import com.cavmkii.seancraft.tarkov.Health;
 import com.cavmkii.seancraft.world.WorldDirector;
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * /seancraft where | summon joe|sean | babywars start|stop | reload
+ * /seancraft where | summon joe|sean | babywars start|stop | reload | injure <part> <kind> [percent]
  */
 public final class GoblinCommands {
     private GoblinCommands() {}
@@ -28,7 +33,38 @@ public final class GoblinCommands {
                         .then(Commands.literal("stop").executes(ctx -> reply(ctx,
                                 director(ctx).war.end("An admin called off the Baby Wars.") ? "Calling off the Baby Wars." : "No war is running."))))
                 .then(Commands.literal("reload").requires(src -> src.hasPermission(2))
-                        .executes(ctx -> reply(ctx, Cfg.load() + "\n" + JoeLines.load()))));
+                        .executes(ctx -> reply(ctx, Cfg.load() + "\n" + JoeLines.load())))
+                .then(Commands.literal("injure").requires(src -> src.hasPermission(2))
+                        .then(Commands.argument("part", StringArgumentType.word())
+                                .suggests((ctx, b) -> SharedSuggestionProvider.suggest(
+                                        java.util.Arrays.stream(BodyPart.values()).map(p -> p.name().toLowerCase(java.util.Locale.ROOT)), b))
+                                .then(Commands.argument("kind", StringArgumentType.word())
+                                        .suggests((ctx, b) -> SharedSuggestionProvider.suggest(new String[] {"bleed", "fracture", "destroy", "scar", "heal"}, b))
+                                        .executes(ctx -> injure(ctx, 50))
+                                        .then(Commands.argument("percent", IntegerArgumentType.integer(0, 100))
+                                                .executes(ctx -> injure(ctx, IntegerArgumentType.getInteger(ctx, "percent"))))))));
+    }
+
+    /** Testing and admin: give yourself a bleed, fracture, lasting damage, a destroyed part, or heal a part. */
+    private static int injure(CommandContext<CommandSourceStack> ctx, int percent) {
+        ServerPlayer player = ctx.getSource().getPlayer();
+        if (player == null) {
+            ctx.getSource().sendFailure(Component.literal("Run this as a player."));
+            return 0;
+        }
+        BodyPart part;
+        try {
+            part = BodyPart.valueOf(StringArgumentType.getString(ctx, "part").toUpperCase(java.util.Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            ctx.getSource().sendFailure(Component.literal("No such body part."));
+            return 0;
+        }
+        String result = Health.injure(player, part, StringArgumentType.getString(ctx, "kind"), percent / 100f);
+        if (result == null) {
+            ctx.getSource().sendFailure(Component.literal("Kind is bleed, fracture, destroy, scar or heal."));
+            return 0;
+        }
+        return reply(ctx, result);
     }
 
     private static WorldDirector director(CommandContext<CommandSourceStack> ctx) {

@@ -144,24 +144,42 @@ public final class TarkovNet {
     }
 
     /** Server to client: body-part health, conditions and painkiller time. */
-    public record BodySync(float[] body, int[] conditions, int painkillerTicks) implements CustomPacketPayload {
+    public record BodySync(float[] body, int[] conditions, int painkillerTicks, float[] bleed, float[] fracture, float[] scar)
+            implements CustomPacketPayload {
         public static final Type<BodySync> TYPE = payloadType("body_sync");
         public static final StreamCodec<FriendlyByteBuf, BodySync> CODEC = StreamCodec.of((buf, p) -> {
             for (int i = 0; i < 7; i++) {
                 buf.writeFloat(p.body[i]);
                 buf.writeVarInt(p.conditions[i]);
+                buf.writeFloat(p.bleed[i]);
+                buf.writeFloat(p.fracture[i]);
+                buf.writeFloat(p.scar[i]);
             }
             buf.writeVarInt(p.painkillerTicks);
         }, buf -> {
             float[] body = new float[7];
             int[] conditions = new int[7];
+            float[] bleed = new float[7];
+            float[] fracture = new float[7];
+            float[] scar = new float[7];
             for (int i = 0; i < 7; i++) {
                 body[i] = buf.readFloat();
                 conditions[i] = buf.readVarInt();
+                bleed[i] = buf.readFloat();
+                fracture[i] = buf.readFloat();
+                scar[i] = buf.readFloat();
             }
-            return new BodySync(body, conditions, buf.readVarInt());
+            return new BodySync(body, conditions, buf.readVarInt(), bleed, fracture, scar);
         });
         @Override public Type<BodySync> type() { return TYPE; }
+
+        public static BodySync of(TarkovData d) {
+            return new BodySync(d.body.clone(), d.conditions.clone(), d.painkillerTicks, d.bleed.clone(), d.fracture.clone(), d.scar.clone());
+        }
+
+        public Injury injury() {
+            return Injury.of(body, fracture, scar, bleed, painkillerTicks);
+        }
     }
 
     /** Client to server: use the med in an inventory slot on a body part. */

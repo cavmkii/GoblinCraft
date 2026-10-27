@@ -4,7 +4,10 @@
   "package": "com.cavmkii.seancraft.mixin.client",
   "compatibilityLevel": "JAVA_21",
   "client": [
-    "ContainerScreenMixin"
+    "ContainerScreenMixin",
+    "GameRendererInjuryMixin",
+    "GuiEffectsMixin",
+    "LocalPlayerSprintMixin"
   ],
   "injectors": {
     "defaultRequire": 1

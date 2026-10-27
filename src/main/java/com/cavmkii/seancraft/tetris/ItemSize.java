@@ -55,7 +55,12 @@ public final class ItemSize {
             };
         }
         if (item instanceof MedItem med) {
-            return med.med == Med.SPLINT ? new int[] {1, 2} : med.med == Med.SURGICAL_KIT ? new int[] {2, 1} : new int[] {1, 1};
+            return switch (med.med) {
+                case SPLINT -> new int[] {1, 2};
+                case SURGICAL_KIT -> new int[] {2, 1};
+                case SURGERY_CASE -> new int[] {2, 2};
+                default -> new int[] {1, 1};
+            };
         }
         if (item instanceof PartItem part) {
             return part.def.kind() == PartKind.PLATE ? new int[] {2, 2}

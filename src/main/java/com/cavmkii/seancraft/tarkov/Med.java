@@ -16,7 +16,14 @@ public enum Med {
     FIELD_KIT("field_kit", "Field kit", 60, 3, true, true, false, 0, 0.3f, false, false, Module.MEDSTATION, 2,
             List.of(Cost.of(Items.HONEY_BOTTLE, 2), Cost.of(Items.STRING, 3), Cost.of(Items.SLIME_BALL, 2))),
     SURGICAL_KIT("surgical_kit", "Surgical kit", 100, 2, true, true, true, 0, 0.5f, false, true, Module.MEDSTATION, 3,
-            List.of(Cost.of(Items.IRON_INGOT, 2), Cost.of(Items.STRING, 4), Cost.of(Items.HONEY_BOTTLE, 3), Cost.of(Items.POPPY, 2)));
+            List.of(Cost.of(Items.IRON_INGOT, 2), Cost.of(Items.STRING, 4), Cost.of(Items.HONEY_BOTTLE, 3), Cost.of(Items.POPPY, 2))),
+    /** The big one (2x2): brings a part back to new, lasting damage and all. */
+    SURGERY_CASE("surgery_case", "Surgery case", 200, 1, true, true, true, 0, 1f, false, true, Module.MEDSTATION, 3,
+            List.of(Cost.of(Items.IRON_INGOT, 6), Cost.of(Items.GOLD_INGOT, 2), Cost.of(Items.STRING, 8), Cost.of(Items.HONEY_BOTTLE, 4),
+                    Cost.of(Items.LEATHER, 2)));
+
+    /** Lasting damage a surgical kit leaves on a part it brings back: this share of the part's health is gone. */
+    public static final float KIT_SCAR = 0.35f;
 
     public final String id;
     public final String label;
@@ -52,6 +59,11 @@ public enum Med {
         this.costs = costs;
     }
 
+    /** Clears lasting damage. */
+    public boolean restores() {
+        return this == SURGERY_CASE;
+    }
+
     public String describe() {
         StringBuilder sb = new StringBuilder();
         if (stopsHeavy) {
@@ -62,14 +74,16 @@ public enum Med {
         if (fixesFracture) {
             sb.append("Sets a fracture. ");
         }
-        if (revives) {
-            sb.append("Restores a destroyed part. ");
+        if (restores()) {
+            sb.append("Restores a part to new, lasting damage included. ");
+        } else if (revives) {
+            sb.append("Restores a destroyed part, but it keeps lasting damage (").append((int) (KIT_SCAR * 100)).append("% of its health). ");
         }
         if (heal > 0) {
             sb.append("Heals the part ").append((int) (heal * 100)).append("% of max health. ");
         }
         if (painkillerTicks > 0) {
-            sb.append("Hides fracture and destroyed-limb effects for 5 minutes. ");
+            sb.append("Lets you push through injuries for 5 minutes: much smaller limb penalties, and you can sprint. ");
         }
         if (limbsOnly) {
             sb.append("Arms and legs only. ");

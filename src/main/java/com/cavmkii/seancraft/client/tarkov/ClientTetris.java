@@ -20,11 +20,15 @@ public final class ClientTetris {
     public static TetrisNet.CraftList craft = new TetrisNet.CraftList(List.of(), java.util.Collections.nCopies(9, ItemStack.EMPTY),
             ItemStack.EMPTY, false, List.of(), true, false, "");
 
+    /** How many syncs have arrived, so a screen can wait for the one after its own move. */
+    public static int syncs;
+
     private ClientTetris() {}
 
     public static void init() {
         ClientPlayNetworking.registerGlobalReceiver(TetrisNet.Sync.TYPE, (payload, ctx) -> {
             sync = payload;
+            syncs++;
             InvData view = new InvData();
             view.rig = payload.rig();
             view.backpack = payload.backpack();

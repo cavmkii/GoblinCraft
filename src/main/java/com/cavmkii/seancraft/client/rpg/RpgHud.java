@@ -28,12 +28,13 @@ final class RpgHud {
         for (int s = 0; s < PlayerData.SLOTS; s++) {
             any |= data.slot(s) != null;
         }
-        if (!any && data.nodes.isEmpty()) {
-            return; // Nothing learned yet; keep the screen clean.
-        }
-
         int x0 = g.guiWidth() / 2 + 91 + 8;
         int y0 = g.guiHeight() - SLOT - 2;
+        if (!any && data.nodes.isEmpty()) {
+            // Nothing learned yet: keep the screen clean, apart from the reminder.
+            unspent(g, mc.font, x0, g.guiHeight() - 9, data);
+            return;
+        }
         g.fill(x0 - 2, y0 - 2, x0 + PlayerData.SLOTS * SLOT + 1, y0 + SLOT + 1, 0x90000000);
         for (int s = 0; s < PlayerData.SLOTS; s++) {
             drawSlot(g, mc.font, x0 + s * SLOT, y0, s, s < unlocked);
@@ -66,6 +67,20 @@ final class RpgHud {
             bar(g, mc.font, x0, y, width, value, max, resource.color);
             y -= 7;
         }
+        unspent(g, mc.font, x0, y - 1, data);
+    }
+
+    /** A small reminder while you have web points to spend; nothing when you don't. */
+    private static void unspent(GuiGraphics g, Font font, int x, int y, PlayerData data) {
+        int free = data.freePoints();
+        if (free <= 0) {
+            return;
+        }
+        g.pose().pushPose();
+        g.pose().translate(x, y, 0);
+        g.pose().scale(0.75f, 0.75f, 1);
+        g.drawString(font, "Unspent web points: " + free + " (K)", 0, 0, 0xFFFFE060, true);
+        g.pose().popPose();
     }
 
     private static void drawSlot(GuiGraphics g, Font font, int x, int y, int slot, boolean open) {
