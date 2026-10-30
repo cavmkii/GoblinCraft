@@ -39,7 +39,9 @@ final class EffectHud {
             int i = p.ordinal();
             int c = body.conditions()[i];
             if (body.body()[i] <= 0.0001f) {
+                // A destroyed part is the whole story: its bleeds, breaks and lasting damage don't need their own lines.
                 out.add(new Wound(new ItemStack(Items.BARRIER), "Destroyed - " + p.label, "surgery", 0xFFFF5555));
+                continue;
             }
             if ((c & Body.HEAVY_BLEED) != 0) {
                 out.add(new Wound(new ItemStack(Items.RED_DYE), "Heavy bleed " + pct(body.bleed()[i]) + "% - " + p.label, "tourniquet", 0xFFFF5555));
@@ -77,11 +79,16 @@ final class EffectHud {
         if (inj.aim() >= 0.5f) {
             arms.append(arms.isEmpty() ? "" : "  ").append("Aim ±").append(Math.round(inj.aim())).append("°");
         }
-        if (!legs.isEmpty()) {
-            lines.add(legs.toString());
-        }
-        if (!arms.isEmpty()) {
-            lines.add(arms.toString());
+        // One line when both fit, two when they don't.
+        if (!legs.isEmpty() && !arms.isEmpty() && legs.length() + arms.length() <= 44) {
+            lines.add(legs + "  " + arms);
+        } else {
+            if (!legs.isEmpty()) {
+                lines.add(legs.toString());
+            }
+            if (!arms.isEmpty()) {
+                lines.add(arms.toString());
+            }
         }
         return lines;
     }

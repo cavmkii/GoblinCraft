@@ -38,6 +38,33 @@ final class RaidHud {
         g.drawString(mc.font, b.subtitle(), cx - mc.font.width(b.subtitle()) / 2, y + 15, a | 0xDDDDDD, true);
     }
 
+    /**
+     * Top of what chat is showing right now (recent messages, or the whole history while it's open), so injuries and
+     * effects sit above it instead of underneath. Vanilla draws chat upward from 40 above the bottom of the screen.
+     */
+    private static int chatTop(GuiGraphics g, Minecraft mc) {
+        net.minecraft.client.gui.components.ChatComponent chat = mc.gui.getChat();
+        java.util.List<net.minecraft.client.GuiMessage.Line> lines = ((com.cavmkii.seancraft.mixin.client.ChatAccessor) chat).seancraft$lines();
+        int visible;
+        if (chat.isChatFocused()) {
+            visible = Math.min(lines.size(), chat.getLinesPerPage());
+        } else {
+            int now = mc.gui.getGuiTicks();
+            visible = 0;
+            for (net.minecraft.client.GuiMessage.Line line : lines) {
+                if (now - line.addedTime() >= 200 || visible >= chat.getLinesPerPage()) {
+                    break;
+                }
+                visible++;
+            }
+        }
+        if (visible == 0 || mc.options.chatVisibility().get() == net.minecraft.world.entity.player.ChatVisiblity.HIDDEN) {
+            return Integer.MAX_VALUE;
+        }
+        double lineHeight = 9 * (mc.options.chatLineSpacing().get() + 1) * chat.getScale();
+        return (int) (g.guiHeight() - 40 - visible * lineHeight) - 4;
+    }
+
     static void render(GuiGraphics g, DeltaTracker delta) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player != null && !mc.options.hideGui) {
@@ -49,7 +76,7 @@ final class RaidHud {
         }
         int x = 4;
         int y = g.guiHeight() - 30;
-        EffectHud.render(g, mc, x, s.state() == 0 ? g.guiHeight() - 4 : y - 4);
+        EffectHud.render(g, mc, x, Math.min(s.state() == 0 ? g.guiHeight() - 4 : y - 4, chatTop(g, mc)));
         if (s.state() == 0) {
             return;
         }
