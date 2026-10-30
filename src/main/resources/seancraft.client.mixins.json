@@ -7,6 +7,7 @@
     "ContainerScreenMixin",
     "GameRendererInjuryMixin",
     "GuiEffectsMixin",
+    "GuiHealthMixin",
     "HumanoidModelCarryMixin",
     "ItemInHandCarryMixin",
     "ItemInHandLayerCarryMixin",

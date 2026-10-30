@@ -67,6 +67,7 @@ public final class ModItems {
                         output.accept(com.cavmkii.seancraft.rpg.RpgContent.ORB_OF_REGRET);
                         output.accept(com.cavmkii.seancraft.tarkov.TarkovContent.HIDEOUT_BENCH_ITEM);
                         output.accept(com.cavmkii.seancraft.tarkov.TarkovContent.FOB_TABLE_ITEM);
+                        output.accept(ModItems.FIRE_ARROW);
                         output.accept(com.cavmkii.seancraft.tarkov.TarkovContent.SECURE_BETA);
                         output.accept(com.cavmkii.seancraft.tarkov.TarkovContent.SECURE_GAMMA);
                         output.accept(com.cavmkii.seancraft.tarkov.TarkovContent.SECURE_KAPPA);
@@ -77,6 +78,8 @@ public final class ModItems {
                     .build());
 
     private ModItems() {}
+
+    public static final Item FIRE_ARROW = register("fire_arrow", new FireArrowItem(new Item.Properties()));
 
     private static Item register(String name, Item item) {
         return Registry.register(BuiltInRegistries.ITEM, SeanCraft.id(name), item);

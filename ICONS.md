@@ -46,4 +46,6 @@ Items without a PNG keep their stand-in, so you can add them one at a time.
 
 **Character:** `orb_of_regret`
 
+**Raid:** `fire_arrow` (blocks: `fob_table`)
+
 **Blocks** (as items): `hideout_bench`, `weapon_bench`, `altar_of_regret`. These show the block model in your inventory now, and a PNG replaces that with a flat icon.
