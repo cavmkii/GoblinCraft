@@ -23,7 +23,11 @@ public final class TarkovContent {
     public static final Block HIDEOUT_BENCH = Registry.register(BuiltInRegistries.BLOCK, SeanCraft.id("hideout_bench"),
             new HideoutBlock(BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(2.5f).sound(SoundType.WOOD)));
     public static final Item HIDEOUT_BENCH_ITEM = Registry.register(BuiltInRegistries.ITEM, SeanCraft.id("hideout_bench"),
-            new BlockItem(HIDEOUT_BENCH, new Item.Properties()));
+            new HideoutBenchItem(HIDEOUT_BENCH, new Item.Properties()));
+    public static final Block FOB_TABLE = Registry.register(BuiltInRegistries.BLOCK, SeanCraft.id("fob_table"),
+            new FobTableBlock(BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(2f).sound(SoundType.WOOD)));
+    public static final Item FOB_TABLE_ITEM = Registry.register(BuiltInRegistries.ITEM, SeanCraft.id("fob_table"),
+            new FobTableBlock.Item(FOB_TABLE, new Item.Properties()));
 
     public static final Item SECURE_BETA = secure("secure_beta", SecureTier.BETA);
     public static final Item SECURE_GAMMA = secure("secure_gamma", SecureTier.GAMMA);

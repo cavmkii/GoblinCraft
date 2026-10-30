@@ -17,6 +17,16 @@ public abstract class LivingEntityMixin {
         return RpgDamage.modify((LivingEntity) (Object) this, source, amount);
     }
 
+    /** Mobs from further out give more XP (2.3.1). */
+    @org.spongepowered.asm.mixin.injection.Inject(method = "getExperienceReward", at = @At("RETURN"), cancellable = true)
+    private void seancraft$distanceXp(net.minecraft.server.level.ServerLevel level, net.minecraft.world.entity.Entity killer,
+            org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable<Integer> cir) {
+        float multiplier = com.cavmkii.seancraft.tarkov.Tarkov.xpMultiplier((LivingEntity) (Object) this);
+        if (multiplier != 1) {
+            cir.setReturnValue(Math.round(cir.getReturnValue() * multiplier));
+        }
+    }
+
     /** Destroyed body parts lock away their share of hearts. */
     @ModifyVariable(method = "heal", at = @At("HEAD"), argsOnly = true)
     private float seancraft$capHeal(float amount) {

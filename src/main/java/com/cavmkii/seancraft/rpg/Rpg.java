@@ -62,6 +62,8 @@ public final class Rpg {
         long combatUntil;
         long parryUntil;
         int leapTicks;
+        /** Just respawned: start with full mana and stamina and no rage. */
+        boolean refill;
         Vec3 lastPos;
         boolean dirty = true;
     }
@@ -101,11 +103,8 @@ public final class Rpg {
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> markDirty(handler.player));
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> RUNTIME.remove(handler.player.getUUID()));
         ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) -> {
-            PlayerData data = data(newPlayer);
-            Stats stats = new Stats(data);
-            data.mana = stats.maxMana();
-            data.stamina = stats.maxStamina();
-            data.rage = 0;
+            // Next tick: Fabric copies the old player's data over after this event, which would undo the refill.
+            runtime(newPlayer).refill = true;
             markDirty(newPlayer);
         });
 
@@ -221,6 +220,12 @@ public final class Rpg {
         }
         Stats stats = rt.stats;
         long now = player.serverLevel().getGameTime();
+        if (rt.refill) {
+            rt.refill = false;
+            data.mana = stats.maxMana();
+            data.stamina = stats.maxStamina();
+            data.rage = 0;
+        }
 
         // Resources, per tick.
         data.mana = Math.min(stats.maxMana(), data.mana + stats.manaRegen() / 20f);

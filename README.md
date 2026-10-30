@@ -36,8 +36,22 @@ The inventory screen has five tabs: GEAR, CRAFTING, SKILLS, STATUS and WEB. Crea
 - **Spawn points.** A new world gets 3 fixed spawn points, one at world spawn and two about 400 blocks out. Each has a small shelter with 3 chests and a barrel of starting gear, and the empty ones restock every 30 minutes. New players start at a random one, and so does anyone who dies without a bed.
 - **Safe zones.** The area around a spawn point is safe, and so is your hideout. Anywhere else, you're **in raid**. The HUD in the bottom left says which one you're in, and a short banner at the top of the screen tells you when a raid starts or you extract.
 - **Threat.** The longer a raid goes, the worse it gets. Threat 1 hits at 5 minutes, 2 at 20, 3 at 40 and 4 at 60. Mobs start spawning as elites with more health and damage, and hunting parties come after you.
+- **Distance.** The further you get from world spawn, the tougher the monsters, and the more XP they give. The HUD shows which band you're in, and a banner pops up when you cross into a new one.
+
+  | Band | Distance from spawn | Monster health | Monster damage | XP |
+  |---|---|---|---|---|
+  | Heartland | 0–1,000 | normal | normal | normal |
+  | Wilds | 1,000–3,000 | +25% | +15% | +25% |
+  | Frontier | 3,000–6,000 | +50% | +30% | +50% |
+  | Far lands | 6,000+ | +100% | +50% | +100% |
+
+  Elites add on top of that, but a monster never gets past 4x health or 2.5x damage. In the Frontier and the Far lands, raids start at threat 2, and so does any raid in the Nether. Nether distances count 8x, like the travel.
+- **FOB tables.** Made at the Hideout Bench from 8 planks, 4 sticks and a campfire. While you're in the same chunk as one, the raid timer stops. Each raid only gets 15 minutes of that, shared between every table, and it fills back up when you extract. It doesn't count while a monster is within 16 blocks or for 10 seconds after you get hit. One per chunk, and not in a safe zone. It's not a safe zone itself, and it has no stash.
 - **Dying in raid.** By default you lose everything except what's in your secure pouch, and nothing drops. Dying in a safe zone is a normal death.
 - **Hideout.** Craft a Hideout Bench (3 cobblestone on top, then plank / crafting table / plank, then 3 planks) and place it. Everything within 30 blocks is your hideout. Chests and barrels inside it are your stash.
+  - Hideouts have to be at least 500 blocks from each other and from spawn points.
+  - You can have 3 Hideout Benches placed at once. Break one to move it. Anyone can use anyone's hideout as a safe zone.
+  - Only a bed inside a hideout sets your respawn point. You can still sleep in other beds.
 - **Hideout modules.** The bench builds modules, and each one takes real time. You don't need everything at once: hit CONTRIBUTE to put in whatever you have from your inventory and stash. Once it's all in, it starts building. TRACK puts what's still missing on your gather list (see below).
 - **Station tabs.** In your hideout, the Hideout Bench, Weapon Bench and crafting table screens all have tabs for each other, so you can hop between them from anywhere in the hideout without walking over. Each station shows up once it's within the hideout.
 
@@ -178,6 +192,8 @@ There's only ever one Joe and one Sean, and they're not always around. Each visi
 - **Config file:** `config/seancraft/seancraft.properties`. It's created on first run, and every setting has a comment. Run `/seancraft reload` after changing it.
 - **Common changes:**
   - `Raid.DeathRule`: `LOSE_EVERYTHING`, `KEEP_SECURE` (normal drops, but you keep the pouch), or `VANILLA`.
+  - `Raid.DistanceScaling`: turn the distance bands off.
+  - `Raid.HideoutSpacing` (500), `Raid.MaxHideouts` (3) and `Raid.FobPauseMinutes` (15).
   - `Raid.ThreatMinutes`: when each threat level starts (default `5,20,40,60`).
   - `Spawn.*`: number of spawn points, distance, safe radius, restock time.
 - **Commands:**

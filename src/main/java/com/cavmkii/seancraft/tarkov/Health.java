@@ -47,6 +47,7 @@ public final class Health {
         boolean dirty = true;
         BodyPart chosen;
         long chosenUntil;
+        boolean resetBody;
     }
 
     private static final Map<UUID, Runtime> RUNTIME = new HashMap<>();
@@ -71,7 +72,9 @@ public final class Health {
         });
         ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) -> {
             if (!alive) {
-                Body.reset(Tarkov.data(newPlayer));
+                // Not now: Fabric copies the old player's data over after this event, which would bring the
+                // destroyed parts back (and a destroyed head would kill again on every respawn). Reset next tick.
+                rt(newPlayer).resetBody = true;
             }
             rt(newPlayer).dirty = true;
         });
@@ -222,6 +225,11 @@ public final class Health {
             }
             TarkovData d = Tarkov.data(player);
             Runtime rt = rt(player);
+            if (rt.resetBody) {
+                rt.resetBody = false;
+                Body.reset(d);
+                rt.dirty = true;
+            }
             if (d.painkillerTicks > 0) {
                 d.painkillerTicks--;
                 if (d.painkillerTicks % 20 == 0) {

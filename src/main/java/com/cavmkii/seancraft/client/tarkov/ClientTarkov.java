@@ -12,7 +12,7 @@ import org.lwjgl.glfw.GLFW;
 
 /** Client side of the raid loop: raid HUD, Hideout screen, and the J (gear) and H (status) keys. */
 public final class ClientTarkov {
-    public static TarkovNet.RaidState raid = new TarkovNet.RaidState(0, 0, 0, -1);
+    public static TarkovNet.RaidState raid = new TarkovNet.RaidState(0, 0, 0, -1, 0, -1, false);
 
     public static TarkovNet.Banner banner;
     public static long bannerAt;
