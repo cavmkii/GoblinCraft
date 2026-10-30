@@ -1,0 +1,45 @@
+{
+  "name": "Mark",
+  "tier": 1,
+  "health": 2000,
+  "resist": { "slash": 1.5 },
+  "phases": [
+    { "name": "Mark", "from": 1.0, "keep": [6, 12], "speed": 0.9 },
+    { "name": "The Old Guard", "from": 0.5, "scale": 1.2, "approach": true, "speed": 0.7 }
+  ],
+  "attacks": [
+    {
+      "id": "reel_pull", "name": "Reel Pull", "phases": [1, 2], "range": [6, 18],
+      "windup": 0.8, "active": 0.2, "recovery": 0.6, "cooldown": 8, "weight": 3,
+      "action": "pull", "damage": 15, "split": { "pierce": 1 }, "width": 1.2, "pull": 6,
+      "counter": "Roll sideways when the reel clicks"
+    },
+    {
+      "id": "cast_net", "name": "Cast Net", "phases": [1], "range": [4, 12],
+      "windup": 1.0, "active": 0.2, "recovery": 0.8, "cooldown": 12, "weight": 2,
+      "action": "net", "radius": 3, "root": 2,
+      "counter": "Leave the circle, or cut free with any slash hit"
+    },
+    {
+      "id": "seniority_swing", "name": "Seniority Swing", "phases": [2], "range": [0, 4],
+      "windup": 1.2, "active": 0.3, "recovery": 1.5, "cooldown": 6, "weight": 3,
+      "action": "arc", "damage": 40, "split": { "blunt": 1 }, "radius": 4, "angle": 120, "fracture": true,
+      "counter": "Sidestep, then punish"
+    },
+    {
+      "id": "all_at_once", "name": "All at Once", "phases": [2], "range": [0, 12],
+      "windup": 1.5, "active": 1.0, "recovery": 1.5, "cooldown": 16, "weight": 2,
+      "action": "ring", "damage": 25, "split": { "pierce": 1 }, "count": 8,
+      "counter": "Get out of the ring or take cover"
+    }
+  ],
+  "lines": {
+    "intro": "I've been fishing this spot since before you were born.",
+    "net_cut": "That net was older than you.",
+    "transition": "Forty years. Forty years.",
+    "taunt": "Why did they call you first?",
+    "low": "I'll be filing a grievance.",
+    "death": "I'm putting in my notice.",
+    "retired": "Retired"
+  }
+}

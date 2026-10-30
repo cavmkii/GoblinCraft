@@ -1,0 +1,9 @@
+{
+  "parent": "minecraft:block/cube",
+  "textures": {
+    "particle": "minecraft:block/chiseled_bookshelf_side",
+    "north": "minecraft:block/chiseled_bookshelf_occupied", "south": "minecraft:block/chiseled_bookshelf_occupied",
+    "east": "minecraft:block/chiseled_bookshelf_side", "west": "minecraft:block/chiseled_bookshelf_side",
+    "up": "minecraft:block/chiseled_bookshelf_top", "down": "minecraft:block/chiseled_bookshelf_top"
+  }
+}

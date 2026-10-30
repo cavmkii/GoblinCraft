@@ -224,9 +224,12 @@ public final class Tarkov {
             rt.raidStart = now - headStart;
         }
         boolean paused = fobPauses(player, rt, now);
-        if (paused) {
+        if (com.cavmkii.seancraft.boss.Arenas.inFight(player)) {
+            // Raid threat stops rising while a boss is alive (8.4.5); this costs no FOB time.
+            rt.raidStart = Math.min(rt.raidStart + 20, now);
+        } else if (paused) {
             // This runs once a second: push the raid's start back by the second that just passed.
-            rt.raidStart += 20;
+            rt.raidStart = Math.min(rt.raidStart + 20, now);
             rt.fobUsedTicks += 20;
         }
         long raidTicks = now - rt.raidStart;
@@ -466,10 +469,21 @@ public final class Tarkov {
     // ================================================================== death
 
     /** Called (from a mixin) just before a dying player's inventory would drop. */
+    /** Share of carried stacks lost on a boss death. */
+    static final float BOSS_DEATH_LOSS = 0.3f;
+
     public static void beforeDeathDrops(ServerPlayer player) {
         boolean raid = inRaid(player);
         Runtime rt = runtime(player);
         String time = rt.inRaid != null && rt.inRaid ? " Raid time " + clock(player.serverLevel().getGameTime() - rt.raidStart) + "." : "";
+        if (com.cavmkii.seancraft.boss.Arenas.inFight(player)) {
+            // A boss death costs a random share of what you carry, lighter than a raid death (8.4.7). The rest drops
+            // where you fell, for the run back.
+            int lost = com.cavmkii.seancraft.tetris.Tetris.onBossDeath(player, BOSS_DEATH_LOSS);
+            player.sendSystemMessage(Component.literal("Down in the boss fight. You lost " + lost
+                    + " stacks; the rest is where you fell. The fight goes on while anyone is still in the ring.").withStyle(ChatFormatting.DARK_RED));
+            return;
+        }
         com.cavmkii.seancraft.tetris.Tetris.onDeath(player, raid, Cfg.raidDeathRule);
         if (!raid) {
             return;

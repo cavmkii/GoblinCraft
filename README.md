@@ -25,6 +25,7 @@ To build the jar yourself you need JDK 21. Run `./gradlew build`, and the jar sh
 | K | Inventory screen, WEB tab (passive tree) |
 | Z, X, C, V, B | Active skills in your 5 ability slots |
 | R | Dodge roll (Combat Roll) |
+| Y | Trophy power |
 | T (over an item, in the inventory screen) | Adds it to your gather list |
 
 The inventory screen has five tabs: GEAR, CRAFTING, SKILLS, STATUS and WEB. Creative mode keeps the vanilla inventory.
@@ -206,6 +207,32 @@ Swings and rolls come from Better Combat and Combat Roll. SeanCraft puts a price
 - Small supply caches (a barrel and some mossy slabs) are scattered around the overworld.
 - Portals work like normal.
 
+### Bosses
+
+The first boss is in. Boss dungeons come later, so for now an op places the arena's Summoning Pedestal with `/seancraft pedestal` (it's also in the creative tab).
+
+- **Summoning.** Craft the boss's totem at the Hideout Bench and use it on a Summoning Pedestal. The boss rises after 3 seconds. The totem is used up. Beaten bosses can be summoned again.
+- **The arena** is a ring 40 blocks across around the pedestal. Everyone inside sees the boss bar.
+  - While the boss is alive, nobody can break or place blocks in the ring.
+  - Hits from outside the ring do nothing.
+  - The boss walks back if you pull it out, and it never chases you out.
+  - It can't be put in a boat or minecart.
+  - Raid threat stops rising while you're in the ring.
+- **How bosses fight.** A boss moves into position, picks an attack, winds it up (arm raised, sounds, particles), strikes, then stays open for a moment. Touching it doesn't hurt; only its attacks do. At set health it changes phase: a few seconds where it can't be hurt, then new attacks. Hits it's weak to burst with crit sparks; resisted ones spark dully.
+- **Groups.** Each extra player who has been in the ring adds 85% boss health and 10% damage, and the boss attacks more often. It counts up to 6 players.
+- **Dying in a boss fight** costs a random third of what you carry; the rest drops where you fell, so you can run back. The fight keeps going while anyone is in the ring. If the ring is empty for 30 seconds, the boss leaves and the totem is gone.
+- **Rewards** go in a chest on the pedestal, one share per player in the ring at the kill. Your first kill of a boss also gives its trophy and class XP (about a level per tier).
+- **Mark / The Old Guard** (tier 1). Totem: 4 copper ingots, a fishing rod, a cod and a book and quill.
+  - He keeps his distance, pulls you in with his reel (roll sideways when it clicks), and throws a net that roots you for 2 seconds. Cut it with any sword or axe swing.
+  - At half health he snaps his rod and becomes the Old Guard. He walks you down, swings hard up close, and throws a ring of hooks and paperwork.
+  - While he braces between attacks, hits from the front do half damage, so go around him.
+  - He takes 150% from slash.
+  - Drops: Mark's Reel (a grapple rod), the Old Salt trophy and a Stale Logbook on your first kill, and copper, rabbit hide and bones.
+- **Trophy powers.** Craft a Trophy Rack at the Hideout Bench (6 planks, an item frame, 2 iron) and put it in a hideout.
+  - Use it with a trophy to put the trophy on the rack. Use it empty-handed to choose that trophy's power, and sneak to take a trophy back.
+  - Press Y to use your power: 5 minutes on, then 20 minutes to recharge.
+  - Old Salt's power is Tailwind: faster swimming.
+
 ### Joe and Sean
 
 - **Joe** is a small green goblin who wanders around looking for Sean, says stuff in chat, throws up, and steals from your pockets, rig or backpack (never your hotbar, gear or pouch). He leaves you alone unless you hit him, or unless someone says "baby wars" in chat. When he dies he drops everything he stole. He gets stronger as players progress.
@@ -232,7 +259,7 @@ There's only ever one Joe and one Sean, and they're not always around. Each visi
 - Damage and healing are 5x vanilla, and so is monster health. Sean's and Joe's health settings are multiplied too. Minecraft caps any mob's max health at 1024, so the Wither can't reach its full 1,500.
 - **Commands:**
   - `/seancraft where` shows where Joe and Sean are.
-  - `/seancraft summon joe|sean`, `/seancraft babywars start|stop` and `/seancraft reload` need op.
+  - `/seancraft summon joe|sean`, `/seancraft babywars start|stop`, `/seancraft pedestal` (puts a Summoning Pedestal under you) and `/seancraft reload` need op.
   - `/character xp|skill|reset` is for testing the character system (op).
   - `/seancraft injure <part> <bleed|fracture|scar|destroy|heal> [percent]` sets an injury on yourself, for testing (op).
 
