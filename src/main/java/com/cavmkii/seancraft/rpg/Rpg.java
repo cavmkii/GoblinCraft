@@ -137,6 +137,7 @@ public final class Rpg {
         }
         PlayerData data = data(player);
         int before = data.skillLevel(skill);
+        amount *= com.cavmkii.seancraft.food.Rest.skillMultiplier(player);
         data.skillXp.merge(skill, amount, Double::sum);
         int after = data.skillLevel(skill);
         if (after != before) {
@@ -229,7 +230,7 @@ public final class Rpg {
 
         // Resources, per tick.
         data.mana = Math.min(stats.maxMana(), data.mana + stats.manaRegen() / 20f);
-        com.cavmkii.seancraft.combat.Combat.tick(player, data, stats.maxStamina());
+        com.cavmkii.seancraft.combat.Combat.tick(player, data, stats.maxStamina() + com.cavmkii.seancraft.food.Food.stamina(player));
         if (now > rt.combatUntil) {
             data.rage = Math.max(0, data.rage - 2f / 20f);
         }
@@ -339,7 +340,7 @@ public final class Rpg {
             player.setHealth(player.getMaxHealth());
         }
         data.mana = Math.min(data.mana, stats.maxMana());
-        data.stamina = Math.min(data.stamina, stats.maxStamina());
+        data.stamina = Math.min(data.stamina, stats.maxStamina() + com.cavmkii.seancraft.food.Food.stamina(player));
     }
 
     private static void setModifier(ServerPlayer player, Holder<Attribute> attribute, String name, double amount, AttributeModifier.Operation op) {

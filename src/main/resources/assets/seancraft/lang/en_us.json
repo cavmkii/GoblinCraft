@@ -38,6 +38,8 @@
   "block.seancraft.hideout_bench": "Hideout Bench",
   "block.seancraft.fob_table": "FOB Table",
   "item.seancraft.fire_arrow": "Fire Arrow",
+  "effect.seancraft.resting": "Resting",
+  "effect.seancraft.rested": "Rested",
   "item.seancraft.fire_arrow.desc": "Pierce damage with some fire on top, and it sets what it hits alight.",
   "item.seancraft.fob_table.desc": "Stops the raid timer while you're in its chunk, out of 15 minutes of FOB time per raid. Not while monsters are near or right after you're hit.",
   "item.seancraft.hideout_bench.desc": "Everything within its radius is your hideout: safe from raid rules. Use it to build modules and craft hideout gear.",

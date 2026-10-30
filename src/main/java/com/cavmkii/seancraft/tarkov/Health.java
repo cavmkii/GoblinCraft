@@ -122,6 +122,7 @@ public final class Health {
         }
         if (part == null) {
             reconcile(player); // Fire, poison and the like spread over every part.
+            vitalGone(player, d, source);
             return;
         }
         if (fall) {
@@ -135,6 +136,9 @@ public final class Health {
         }
         rt.dirty = true;
         reconcile(player);
+        if (vitalGone(player, d, source)) {
+            return;
+        }
         if (source.is(BLEED)) {
             return;
         }
@@ -154,6 +158,16 @@ public final class Health {
         if (part.limb() && player.getRandom().nextFloat() < chance * (1 - cut)) {
             inflict(player, Body.FRACTURE, part, severity);
         }
+    }
+
+    /** A destroyed head or thorax kills (5.1). Returns true if it did. */
+    private static boolean vitalGone(ServerPlayer player, TarkovData d, DamageSource source) {
+        if (!player.isAlive() || player.isCreative() || (!Body.destroyed(d, BodyPart.HEAD) && !Body.destroyed(d, BodyPart.THORAX))) {
+            return false;
+        }
+        player.setHealth(0);
+        player.die(source);
+        return true;
     }
 
     /** A fall lands on both legs, half each, and either can break. */

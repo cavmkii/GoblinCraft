@@ -66,7 +66,8 @@ The inventory screen has five tabs: GEAR, CRAFTING, SKILLS, STATUS and WEB. Crea
 
 Swings and rolls come from Better Combat and Combat Roll. SeanCraft puts a price on them.
 
-- **Stamina.** Everyone has 100. The bar sits right of the hotbar.
+- **Stamina.** Everyone has 100, plus whatever your food adds. The bar sits right of the hotbar.
+  - Sprinting costs 8 a second.
   - A swing costs a quarter of the weapon's damage, times 5. An iron sword is 7.5 a swing.
   - A roll costs 20.
   - Stamina refills at 25 a second, but only after a second without spending any. Keep swinging and it never refills.
@@ -87,6 +88,23 @@ Swings and rolls come from Better Combat and Combat Roll. SeanCraft puts a price
   - Armor doesn't stop elemental damage. Each level of Fire, Blast or Projectile Protection gives 4 resistance points against its kind, through the same formula.
   - Monsters' armor uses the same formula.
 - **Fire arrows.** Made at the Hideout Bench: 4 arrows, a coal or charcoal and a string make 4. They hit with pierce plus some fire, and set what they hit alight. Bows with Flame add a smaller fire share.
+
+### Food and rest
+
+- **No hunger.** You can't starve, and food doesn't heal you the vanilla way. Instead you have 3 food slots, shown above the injuries in the bottom left, each with a bar for the time it has left.
+- **Meals.** Eating something puts it in a slot for a while, adding max health, max stamina and slow health regen. Hover a food to see what it gives.
+  - Meat and stews are health food: lots of health, a little stamina.
+  - Bread, berries, fruit and honey are stamina food.
+  - Fish, pumpkin pie and golden food are balanced.
+  - Better food lasts longer (up to about 20 minutes).
+  - The bonus fades over the last quarter, and the bar turns amber, so you know it's time to eat again.
+- **Eating rules.** You can't have two of the same food at once. You can eat it again once it's half gone, which starts it over. With all 3 slots full, you wait for one to run out. You lose your meals when you die.
+- **Rested.** Stay within 4 blocks of a lit campfire, fire or furnace, under a roof, for 20 seconds without getting hurt.
+  - A Resting chip counts down while you wait.
+  - Rested gives +50% health regen, +100% stamina regen and +50% skill XP.
+  - It lasts 8 minutes, plus 1 minute for each point of comfort.
+  - Comfort is 1 for each kind of thing within 8 blocks (a fire, a bed, a carpet, a banner, a table, flowers or a flower pot), plus 1 for each module built in the hideout you're in.
+  - It works away from a hideout too, like at a FOB table, but there's usually less comfort out there.
 
 ### Inventory
 

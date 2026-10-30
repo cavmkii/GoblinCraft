@@ -29,6 +29,8 @@ public final class Combat {
     /** Exhausted players get sprint and rolls back once the bar is this full again. */
     public static final float RECOVER_FRACTION = 0.25f;
     static final float REGEN_PER_SECOND = 25;
+    /** Sprinting is the one part of vanilla hunger left, paid in stamina (design doc 11). */
+    static final float SPRINT_PER_SECOND = 8;
     static final int REGEN_PAUSE_TICKS = 20;
     static final int ROLL_IFRAME_TICKS = 8;
     /** Combat Roll's recharge, cut from its 4 seconds so stamina is the real limit (9.6.3). */
@@ -111,11 +113,13 @@ public final class Combat {
         }
     }
 
-    /** Per tick, from the character tick: flat regeneration after the pause, and the exhausted state. */
+    /** Per tick, from the character tick: sprinting, flat regeneration after the pause, and the exhausted state. */
     public static void tick(ServerPlayer player, PlayerData data, float max) {
         State s = state(player);
-        if (player.serverLevel().getGameTime() >= s.regenPausedUntil) {
-            data.stamina = Math.min(max, data.stamina + REGEN_PER_SECOND / 20f);
+        if (player.isSprinting() && !player.isCreative() && !player.isPassenger()) {
+            spend(player, s, data, SPRINT_PER_SECOND / 20f);
+        } else if (player.serverLevel().getGameTime() >= s.regenPausedUntil) {
+            data.stamina = Math.min(max, data.stamina + REGEN_PER_SECOND * com.cavmkii.seancraft.food.Rest.staminaRegenMultiplier(player) / 20f);
         }
         data.stamina = Math.min(max, data.stamina);
         if (s.exhausted) {

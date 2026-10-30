@@ -24,6 +24,12 @@ abstract class GuiHealthMixin {
         ci.cancel();
     }
 
+    /** No hunger bar: food slots show with the effects instead (design doc 11). */
+    @Inject(method = "renderFood", at = @At("HEAD"), cancellable = true)
+    private void seancraft$noHunger(GuiGraphics g, Player player, int y, int x, CallbackInfo ci) {
+        ci.cancel();
+    }
+
     /** The number of heart rows, which places the armor bar: always one. */
     @Redirect(method = "renderPlayerHealth", at = @At(value = "INVOKE", target = "Lnet/minecraft/util/Mth;ceil(F)I", ordinal = 2))
     private int seancraft$oneRow(float rows) {
