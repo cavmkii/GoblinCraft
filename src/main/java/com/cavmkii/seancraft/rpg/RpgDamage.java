@@ -39,6 +39,9 @@ public final class RpgDamage {
         if (!(victim instanceof ServerPlayer player) || source.is(DamageTypeTags.BYPASSES_INVULNERABILITY)) {
             return true;
         }
+        if (com.cavmkii.seancraft.combat.Combat.rollDodges(player, source)) {
+            return false;
+        }
         Stats stats = Rpg.stats(player);
         Rpg.Runtime rt = Rpg.runtime(player);
         long now = player.serverLevel().getGameTime();
@@ -84,7 +87,7 @@ public final class RpgDamage {
             Stats stats = Rpg.stats(attacker);
             PlayerData data = Rpg.data(attacker);
             if (source.is(DamageTypes.PLAYER_ATTACK) && source.getDirectEntity() == attacker) {
-                amount = melee(attacker, victim, data, stats, amount);
+                amount = melee(attacker, victim, data, stats, amount) * com.cavmkii.seancraft.combat.Combat.swingMultiplier(attacker);
             } else if (source.getDirectEntity() instanceof AbstractArrow arrow) {
                 int bows = data.skillLevel(Skill.BOWS);
                 amount = (float) ((amount + stats.primaryDamage())

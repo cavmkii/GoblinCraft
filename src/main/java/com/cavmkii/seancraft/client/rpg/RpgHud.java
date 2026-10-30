@@ -11,7 +11,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.world.item.ItemStack;
 
-/** The ability hotbar (right of the vanilla hotbar) and bars for the resources your slotted skills use. */
+/** The ability hotbar (right of the vanilla hotbar), the stamina bar, and bars for the resources your slotted skills use. */
 final class RpgHud {
     static final int SLOT = 20;
 
@@ -28,11 +28,15 @@ final class RpgHud {
         for (int s = 0; s < PlayerData.SLOTS; s++) {
             any |= data.slot(s) != null;
         }
-        int x0 = g.guiWidth() / 2 + 91 + 8;
+        // Clear of Combat Roll's roll counter, which sits just right of the vanilla hotbar, unless the screen is too narrow.
+        int x0 = Math.min(g.guiWidth() / 2 + 91 + 28, g.guiWidth() - PlayerData.SLOTS * SLOT - 2);
         int y0 = g.guiHeight() - SLOT - 2;
+        int width = PlayerData.SLOTS * SLOT - 1;
         if (!any && data.nodes.isEmpty()) {
-            // Nothing learned yet: keep the screen clean, apart from the reminder.
-            unspent(g, mc.font, x0, g.guiHeight() - 9, data);
+            // Nothing learned yet: just the stamina bar every swing and roll uses, and the reminder.
+            int y = g.guiHeight() - 7;
+            bar(g, mc.font, x0, y, width, ClientRpg.stamina, ClientRpg.stats.maxStamina(), Resource.STAMINA.color);
+            unspent(g, mc.font, x0, y - 8, data);
             return;
         }
         g.fill(x0 - 2, y0 - 2, x0 + PlayerData.SLOTS * SLOT + 1, y0 + SLOT + 1, 0x90000000);
@@ -40,15 +44,14 @@ final class RpgHud {
             drawSlot(g, mc.font, x0 + s * SLOT, y0, s, s < unlocked);
         }
 
-        // Bars for the resources the slotted skills actually use, stacked above the ability bar.
-        Set<Resource> used = EnumSet.noneOf(Resource.class);
+        // Stamina (swings and rolls spend it), plus whatever the slotted skills use, stacked above the ability bar.
+        Set<Resource> used = EnumSet.of(Resource.STAMINA);
         for (int s = 0; s < PlayerData.SLOTS; s++) {
             ActiveSkill skill = data.slot(s);
             if (skill != null) {
                 used.add(skill.resource);
             }
         }
-        int width = PlayerData.SLOTS * SLOT - 1;
         int y = y0 - 7;
         for (Resource resource : Resource.values()) {
             if (!used.contains(resource)) {

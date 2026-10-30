@@ -7,7 +7,11 @@
     "ContainerScreenMixin",
     "GameRendererInjuryMixin",
     "GuiEffectsMixin",
-    "LocalPlayerSprintMixin"
+    "HumanoidModelCarryMixin",
+    "ItemInHandCarryMixin",
+    "ItemInHandLayerCarryMixin",
+    "LocalPlayerSprintMixin",
+    "RollManagerMixin"
   ],
   "injectors": {
     "defaultRequire": 1

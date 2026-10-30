@@ -71,8 +71,8 @@ public final class Stats {
     public float maxMana() { return (float) ((50 + intel() * 3) * (1 + get(Stat.MANA) / 100)); }
     public float manaRegen() { return (float) ((1 + intel() * 0.05) * (1 + get(Stat.MANA_REGEN) / 100)); }
     public float maxRage() { return (float) (50 + str()); }
-    public float maxStamina() { return (float) ((50 + agi() * 2) * (1 + get(Stat.STAMINA) / 100)); }
-    public float staminaRegen() { return (float) ((5 + agi() * 0.1) * (1 + get(Stat.STAMINA_REGEN) / 100)); }
+    /** Base 100 for everyone; AGI never raises it (9.6). Regeneration is flat, in Combat. */
+    public float maxStamina() { return (float) (100 * (1 + get(Stat.STAMINA) / 100)); }
     public double cooldownMultiplier(int castingLevel) {
         return Math.max(0.4, 1 - get(Stat.COOLDOWN) / 100 - castingLevel * 0.002);
     }

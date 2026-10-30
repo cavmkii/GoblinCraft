@@ -150,14 +150,14 @@ public final class PassiveWeb {
             case DUELIST -> switch (index) {
                 case 0 -> new WebNode(id, k, archetype, "Precision", x, y, null).stat(Stat.CRIT_CHANCE, 10);
                 case 1 -> new WebNode(id, k, archetype, "Footwork", x, y, null).stat(Stat.MOVE_SPEED, 5).stat(Stat.ATTACK_SPEED, 5);
-                case 2 -> new WebNode(id, k, archetype, "Momentum", x, y, null).stat(Stat.RAGE_GAIN, 50).stat(Stat.STAMINA_REGEN, 20);
+                case 2 -> new WebNode(id, k, archetype, "Momentum", x, y, null).stat(Stat.RAGE_GAIN, 50).stat(Stat.STAMINA, 10);
                 default -> new WebNode(id, k, archetype, "Duelist's Edge", x, y, null).stat(Stat.MELEE_DAMAGE, 10).stat(Stat.CRIT_CHANCE, 5).stat(Stat.CRIT_DAMAGE, 15);
             };
             case RANGER -> switch (index) {
                 case 0 -> new WebNode(id, k, archetype, "Fleet Foot", x, y, null).stat(Stat.MOVE_SPEED, 8);
                 case 1 -> new WebNode(id, k, archetype, "Sharpshooter", x, y, null).stat(Stat.PROJECTILE_DAMAGE, 20);
                 case 2 -> new WebNode(id, k, archetype, "Evasion", x, y, null).stat(Stat.DODGE, 10);
-                default -> new WebNode(id, k, archetype, "Endurance", x, y, null).stat(Stat.STAMINA, 30).stat(Stat.STAMINA_REGEN, 30);
+                default -> new WebNode(id, k, archetype, "Endurance", x, y, null).stat(Stat.STAMINA, 40);
             };
             case SHADOW -> switch (index) {
                 case 0 -> new WebNode(id, k, archetype, "Assassinate", x, y, null).stat(Stat.BACKSTAB, 40);

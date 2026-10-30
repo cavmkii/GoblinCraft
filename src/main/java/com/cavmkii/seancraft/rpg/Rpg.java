@@ -224,7 +224,7 @@ public final class Rpg {
 
         // Resources, per tick.
         data.mana = Math.min(stats.maxMana(), data.mana + stats.manaRegen() / 20f);
-        data.stamina = Math.min(stats.maxStamina(), data.stamina + stats.staminaRegen() / 20f);
+        com.cavmkii.seancraft.combat.Combat.tick(player, data, stats.maxStamina());
         if (now > rt.combatUntil) {
             data.rage = Math.max(0, data.rage - 2f / 20f);
         }

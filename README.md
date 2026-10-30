@@ -7,7 +7,11 @@ Everyone needs the mod, the server and every player.
 ## Install
 
 1. Install [Fabric Loader](https://fabricmc.net/use/installer/) for **1.21.1**.
-2. Put [Fabric API](https://modrinth.com/mod/fabric-api) (the 1.21.1 build) and `seancraft-<version>.jar` in your `mods` folder.
+2. Put these in your `mods` folder, all the 1.21.1 Fabric builds:
+   - [Fabric API](https://modrinth.com/mod/fabric-api)
+   - [Better Combat](https://modrinth.com/mod/better-combat), which also needs [Player Animator](https://modrinth.com/mod/playeranimator) and [Cloth Config](https://modrinth.com/mod/cloth-config)
+   - [Combat Roll](https://modrinth.com/mod/combat-roll)
+   - `seancraft-<version>.jar`
 3. Start a **new world**. Spawn points are only built in new worlds.
 
 To build the jar yourself you need JDK 21. Run `./gradlew build`, and the jar shows up in `build/libs/`.
@@ -19,7 +23,8 @@ To build the jar yourself you need JDK 21. Run `./gradlew build`, and the jar sh
 | E or J | Inventory screen (GEAR tab) |
 | H | Inventory screen, STATUS tab |
 | K | Inventory screen, WEB tab (passive tree) |
-| Z, R, G, V, B | Active skills in your 5 ability slots |
+| Z, X, C, V, B | Active skills in your 5 ability slots |
+| R | Dodge roll (Combat Roll) |
 | T (over an item, in the inventory screen) | Adds it to your gather list |
 
 The inventory screen has five tabs: GEAR, CRAFTING, SKILLS, STATUS and WEB. Creative mode keeps the vanilla inventory.
@@ -34,6 +39,7 @@ The inventory screen has five tabs: GEAR, CRAFTING, SKILLS, STATUS and WEB. Crea
 - **Dying in raid.** By default you lose everything except what's in your secure pouch, and nothing drops. Dying in a safe zone is a normal death.
 - **Hideout.** Craft a Hideout Bench (3 cobblestone on top, then plank / crafting table / plank, then 3 planks) and place it. Everything within 30 blocks is your hideout. Chests and barrels inside it are your stash.
 - **Hideout modules.** The bench builds modules, and each one takes real time. You don't need everything at once: hit CONTRIBUTE to put in whatever you have from your inventory and stash. Once it's all in, it starts building. TRACK puts what's still missing on your gather list (see below).
+- **Station tabs.** In your hideout, the Hideout Bench, Weapon Bench and crafting table screens all have tabs for each other, so you can hop between them from anywhere in the hideout without walking over. Each station shows up once it's within the hideout.
 
   | Module | What it does |
   |---|---|
@@ -41,6 +47,18 @@ The inventory screen has five tabs: GEAR, CRAFTING, SKILLS, STATUS and WEB. Crea
   | Medstation | Unlocks meds; bleeds stop and fractures heal in the hideout |
   | Perimeter | Bigger hideout radius |
   | Intel center | More calm time per raid; warns you about hunting parties |
+
+### Combat
+
+Swings and rolls come from Better Combat and Combat Roll. SeanCraft puts a price on them.
+
+- **Stamina.** Everyone has 100. The bar sits right of the hotbar.
+  - A swing costs a quarter of the weapon's damage, times 5. An iron sword is 7.5 a swing.
+  - A roll costs 20.
+  - Stamina refills at 25 a second, but only after a second without spending any. Keep swinging and it never refills.
+- **Running dry.** A swing you start with too little stamina does half damage. At 0 you can't sprint or roll until the bar is back to 25.
+- **Rolling.** For the first 0.4 seconds of a roll, attacks (hits, arrows, explosions) can't touch you. Falls, fire, lava, bleeding and poison still can. You can't roll in the middle of a swing, and there's a 0.75 second wait between rolls. Rolls don't use hunger.
+- **Swords** made at the Weapon Bench swing three times in a combo: two side slashes and a harder third slash.
 
 ### Inventory
 
@@ -58,15 +76,17 @@ The inventory screen has five tabs: GEAR, CRAFTING, SKILLS, STATUS and WEB. Crea
 - **Pickups** fill pockets, then rig, then backpack. Weapons and tools go to the hotbar first. If nothing has room, the item stays on the ground.
 - **Rigs and backpacks** have to be empty before you can take them off. You start with a Scav vest (4x2), a Sling bag (3x3) and a 2x2 pouch. Bigger ones are made at the Hideout Bench.
 - **Chests and barrels** open on the GEAR tab as grids too. Where you put things stays put, while hoppers still work like normal. Each one has a SORT button (merges stacks and packs it tight) and a TAKE ALL button. In your hideout, every stash chest shows up there, and STASH ALL dumps your pockets, rig and backpack into them.
+- **Carrying chests.** Shift + left-click a chest or barrel to pick it up with everything in it, and Shift + right-click to set it down again. While you carry it you walk slowly and can't sprint, switch hotbar slots, use items, fight, mine or open any menus. Picking up half of a double chest leaves the other half as a single chest. If you die carrying one, it and its contents drop where you fell. Spawn point chests can't be carried off.
 - **Large chests** show up as one Large Chest everywhere, whether you open it or see it from the stash.
 - **Naming chests.** Click a chest's name to rename it, then hit Enter. The name shows up next to a picture of the block, so you can tell a chest from a barrel at a glance.
 - **Chest filters** work like RimWorld stockpiles. FILTER on a chest lets you allow or disallow kinds of things: weapons, ammo, armor & gear, tools, food, meds, parts, blocks and materials.
   - STASH ALL, and Shift-click with no chest open, put things where the filters say. Chests with narrower filters get first pick, so a weapons-only chest fills before a take-anything chest.
-  - ORGANIZE STASH moves anything sitting in the wrong chest to one that allows it.
+  - ORGANIZE STASH moves anything sitting in the wrong chest to one that allows it, then tops up half-stacks across chests so the same item ends up in as few stacks as it can.
   - Filters only steer automatic moves. You can always put anything anywhere by hand. Sneak + use with an empty hand opens the old chest screen.
 - **Vanilla screens** like the crafting table, furnace and anvil show your grids beside them. Click a grid item to grab it, then drop it in a slot, or the other way round.
 - **Furnaces** (and smokers and blast furnaces) list your fuel and anything that furnace can cook under the backpack, with a second row for each from the stash when you're in the hideout. Click one to put a stack in the right slot, or right-click for one. Tools, weapons and enchanted stuff are left off the fuel list so you don't burn your bow by accident.
 - **Crafting.** The CRAFTING tab has a recipe list on the left, grouped by category, and a crafting grid on the right. Right-clicking a crafting table opens the same tab.
+  - Click a category heading to fold it shut, or click it again to open it.
   - Click a recipe and it gets laid out in the grid with what you have. Your hotbar, grids and stash all count.
   - Or lay it out yourself: click something in MATERIALS, then click a grid cell. Right-click puts down just one.
   - Click the result to craft, or Shift-click to craft as many as you can. The recipe you picked stays selected and lays itself out again after each craft, so you can keep clicking.
@@ -82,7 +102,7 @@ The inventory screen has five tabs: GEAR, CRAFTING, SKILLS, STATUS and WEB. Crea
 ### Health
 
 - **Body parts.** Your health is split across 7 parts: head, thorax, stomach, two arms and two legs. Hits land on a part depending on where they came from, and falls hit your legs.
-- **Injuries.** Parts can bleed, fracture, or get destroyed. A destroyed head or thorax kills you. Bleeds and fractures have a severity from 1 to 100%, and how big the hit was decides how bad it is. Another one on the same part stacks with it. A bleed at 50% or more is a heavy bleed. Bleeding drains the part, faster the worse it is, and once the part's gone the rest of it comes out of the others.
+- **Injuries.** Parts can bleed, fracture, or get destroyed. A destroyed head or thorax kills you. Bleeds and fractures have a severity from 1 to 100%, and how big the hit was decides how bad it is. Another one on the same part stacks with it. A bleed at 50% or more is a heavy bleed. Bleeding drains the part, faster the worse it is, and stops once the part is destroyed.
 - **What injuries do.** It's all on a sliding scale, not on or off. A limb counts as its fracture severity, or 100% if it's destroyed, and two bad legs (or arms) count for more than one.
   - **Legs:** up to 40% slower walking, slower sprinting on top of that, and up to 10% lower jumps. At 100% you can't sprint at all.
   - **Arms:** up to 40% weaker swings, 30% slower swings, and arrows or tridents fly up to 10° off line. A drawn bow also wobbles on screen.
@@ -111,14 +131,17 @@ The inventory screen has five tabs: GEAR, CRAFTING, SKILLS, STATUS and WEB. Crea
 
 ### Weapons and armor from parts
 
-- Swords, axes, crossbows, shields and metal armor are made from parts: blades, handles, guards, wraps, plates and padding. The vanilla recipes for them are gone. Bows keep their vanilla recipe.
-- Craft the parts on the CRAFTING tab. Blades are 2 ingots in a column, plates are 2 in a row, handles are 2 logs, planks or bones diagonally, and so on.
-- Build the item at the **Weapon Bench** (a smithing table and a crafting table, shapeless):
-  1. With the left slot empty, pick what to build.
-  2. Each part gets its own labelled slot: Blade, Grip, Guard, Wrap, or Plates ×4, Padding, Straps for a chestplate.
-  3. Fill them and hit ASSEMBLE.
+- Swords, axes, crossbows, shields and metal armor are made from parts: blades, axe heads, limbs, handles, guards, wraps, plates and padding. The vanilla recipes for them are gone. Bows keep their vanilla recipe.
+- Everything happens at the **Weapon Bench** (a smithing table and a crafting table, shapeless). The crafting table itself is vanilla only.
+- **PARTS tab.** Every part is laid out by kind and material, and the ones you can make right now are green. Hover one to see what it costs. Click to make one, or Shift-click to make 5. It takes materials from what you carry and the stash, and the parts go into your grids.
+  - Most parts cost 2 of their material. Axe heads, limbs and padding cost 3, and a guard needs a stick as well.
+  - Netherite parts are the diamond part plus 2 netherite scrap.
+- **BUILD tab.**
+  1. With the left slot empty, pick what to build. You get an outline of it, with each part's slot sitting where that part goes: blade on top, guard across, grip and pommel below, and so on.
+  2. Empty slots show a faded example of the part that goes there. Hover one for its name, and the plate slot shows how many plates it takes.
+  3. Drop the parts in and hit ASSEMBLE.
 - The standard parts give you exactly the vanilla item. Other materials change damage, swing speed, durability, armor and weight.
-- Put an existing item in the left slot to swap its parts, or level a part up to 4 with its own material.
+- Put an existing item in the left slot and its parts show on its outline. You can swap them out, or level a part up to 4 with its own material using the ▲ next to it.
 
 ### Character
 
@@ -166,6 +189,11 @@ There's only ever one Joe and one Sean, and they're not always around. Each visi
 ## Works with
 
 - **FallingTree:** trees you chop go into your grids, and axes made from parts work with it.
+- **Better Combat and Combat Roll:** required (see Combat).
 - **Grappling Hook Mod:** needs Forge Config API Port too. Hooks go to your hotbar, and using them trains bows & crossbows.
 
-Both were checked by reading their code. Neither has been played alongside this mod yet.
+FallingTree and the Grappling Hook Mod were checked by reading their code, and neither has been played alongside this mod yet. Better Combat and Combat Roll were tested in game.
+
+## Custom icons
+
+Lots of items borrow a vanilla texture for now. To give one its own icon, drop a 16x16 PNG named after the item into `src/main/resources/assets/seancraft/textures/item/` and the build uses it. See [ICONS.md](ICONS.md) for the rules and the full list of item names.

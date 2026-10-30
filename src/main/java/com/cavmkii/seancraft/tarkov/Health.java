@@ -98,6 +98,10 @@ public final class Health {
             return;
         }
         Body.damage(d, part, taken, max);
+        if (Body.destroyed(d, part) && d.bleed[part.ordinal()] > 0) {
+            d.bleed[part.ordinal()] = 0;
+            Body.sync(d, part.ordinal());
+        }
         rt.dirty = true;
         reconcile(player);
         if (source.is(BLEED)) {
@@ -190,6 +194,9 @@ public final class Health {
     private static void inflict(ServerPlayer player, int flag, BodyPart part, float severity) {
         TarkovData d = Tarkov.data(player);
         int i = part.ordinal();
+        if (flag != Body.FRACTURE && Body.destroyed(d, part)) {
+            return; // a destroyed part doesn't bleed
+        }
         if (flag == Body.FRACTURE) {
             Body.addFracture(d, part, severity);
         } else {
@@ -286,6 +293,13 @@ public final class Health {
     private static void bleed(ServerPlayer player, TarkovData d, Runtime rt) {
         float max = player.getMaxHealth();
         for (BodyPart p : BodyPart.values()) {
+            if (Body.destroyed(d, p) && d.bleed[p.ordinal()] > 0) {
+                // Nothing left there to bleed.
+                d.bleed[p.ordinal()] = 0;
+                Body.sync(d, p.ordinal());
+                rt.dirty = true;
+                continue;
+            }
             // From a trickle at 10% to 2% of max health every 2 seconds at 100%.
             float sev = d.bleed[p.ordinal()];
             float drain = sev <= 0 ? 0 : Math.max(0.1f + 0.4f * sev, max * (0.004f + 0.016f * sev));

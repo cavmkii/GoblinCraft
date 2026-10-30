@@ -83,6 +83,7 @@ public final class Tarkov {
         TarkovContent.init();
         TarkovNet.register();
         Health.init();
+        Stations.init();
         Cures.init();
         SpawnPoints.init();
         TarkovLoot.init();
@@ -416,7 +417,8 @@ public final class Tarkov {
     public static void openHideout(ServerPlayer player, BlockPos pos) {
         ServerLevel level = player.serverLevel();
         Hideouts.Hideout h = Hideouts.byPos(level, pos);
-        if (h == null || player.distanceToSqr(Vec3.atCenterOf(pos)) > 64) {
+        // In reach of the bench, or anywhere in its hideout (opened from another station's tab).
+        if (h == null || player.distanceToSqr(Vec3.atCenterOf(pos)) > 64 && !h.contains(player.position())) {
             return;
         }
         long now = level.getGameTime();
@@ -489,6 +491,7 @@ public final class Tarkov {
         int chests = Stash.containers(level, h).size();
         String summary = "Radius " + (int) h.radius() + " blocks. Stash: " + chests + (chests == 1 ? " chest" : " chests") + " in range.";
         ServerPlayNetworking.send(player, new TarkovNet.HideoutView(pos, (int) h.radius(), summary, entries));
+        Stations.send(player);
     }
 
     private static int buildSeconds(Hideouts.Hideout h, Module.Level level) {
@@ -499,7 +502,8 @@ public final class Tarkov {
     private static void hideoutAction(ServerPlayer player, BlockPos pos, int kind, String id) {
         ServerLevel level = player.serverLevel();
         Hideouts.Hideout h = Hideouts.byPos(level, pos);
-        if (h == null || player.distanceToSqr(Vec3.atCenterOf(pos)) > 64) {
+        // In reach of the bench, or anywhere in its hideout (opened from another station's tab).
+        if (h == null || player.distanceToSqr(Vec3.atCenterOf(pos)) > 64 && !h.contains(player.position())) {
             return;
         }
         if (kind == TarkovNet.Entry.MODULE) {

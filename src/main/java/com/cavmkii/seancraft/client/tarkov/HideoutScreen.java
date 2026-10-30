@@ -87,6 +87,7 @@ public class HideoutScreen extends Screen {
             g.fill(tx, 22, tx + 76, 38, active ? 0xFF3A3A44 : 0xFF202026);
             g.drawString(font, tabs[t], tx + (76 - font.width(tabs[t])) / 2, 26, active ? 0xFFFFFFFF : 0xFF888888, false);
         }
+        StationTabs.render(g, font, x0 + 164, 24, w - 164, StationTabs.HIDEOUT, mouseX, mouseY);
 
         List<TarkovNet.Entry> entries = shown();
         int top = listTop();
@@ -198,6 +199,9 @@ public class HideoutScreen extends Screen {
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         int x0 = left();
+        if (StationTabs.click(x0 + 164, 24, panelWidth() - 164, StationTabs.HIDEOUT, mouseX, mouseY)) {
+            return true;
+        }
         for (int t = 0; t < 2; t++) {
             int tx = x0 + t * 80;
             if (mouseX >= tx && mouseX < tx + 76 && mouseY >= 22 && mouseY < 38) {

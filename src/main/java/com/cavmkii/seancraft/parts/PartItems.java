@@ -7,8 +7,6 @@ import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.crafting.RecipeSerializer;
-import net.minecraft.world.item.crafting.SimpleCraftingRecipeSerializer;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
@@ -28,9 +26,6 @@ public final class PartItems {
             new WeaponBenchBlock(BlockBehaviour.Properties.of().mapColor(MapColor.METAL).strength(3f).sound(SoundType.ANVIL)));
     public static final Item WEAPON_BENCH_ITEM = Registry.register(BuiltInRegistries.ITEM, SeanCraft.id("weapon_bench"),
             new BlockItem(WEAPON_BENCH, new Item.Properties()));
-
-    public static final RecipeSerializer<PartAssemblyRecipe> ASSEMBLY = Registry.register(BuiltInRegistries.RECIPE_SERIALIZER,
-            SeanCraft.id("part_assembly"), new SimpleCraftingRecipeSerializer<>(PartAssemblyRecipe::new));
 
     public static final net.minecraft.world.inventory.MenuType<WeaponBenchMenu> BENCH_MENU = Registry.register(BuiltInRegistries.MENU,
             SeanCraft.id("weapon_bench"), new net.minecraft.world.inventory.MenuType<>(WeaponBenchMenu::new,

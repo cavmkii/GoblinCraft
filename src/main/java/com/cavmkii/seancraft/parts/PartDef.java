@@ -1,5 +1,6 @@
 package com.cavmkii.seancraft.parts;
 
+import com.cavmkii.seancraft.tarkov.Cost;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.world.item.Item;
@@ -70,6 +71,26 @@ public record PartDef(String id, PartKind kind, int tier) {
             case WOOD -> new Item[] {Items.OAK_PLANKS, Items.OAK_LOG, Items.BONE, Items.BLAZE_ROD, Items.BREEZE_ROD}[tier - 1];
             case HIDE -> new Item[] {Items.STRING, Items.LEATHER, Items.RABBIT_HIDE, Items.PHANTOM_MEMBRANE, Items.ARMADILLO_SCUTE}[tier - 1];
         };
+    }
+
+    /**
+     * What the Weapon Bench takes to make this part: 2 of its material (3 for axe heads, limbs and padding), a stick
+     * more for a guard. Netherite is the diamond part plus 2 netherite scrap.
+     */
+    public List<Cost> costs() {
+        if (kind.material == PartKind.Material.METAL && tier == 5) {
+            return List.of(Cost.of(PartItems.get(of(kind, 4)), 1), Cost.of(Items.NETHERITE_SCRAP, 2));
+        }
+        int n = switch (kind) {
+            case AXE_HEAD, LIMBS, PADDING -> 3;
+            default -> 2;
+        };
+        Cost main = switch (kind.material) {
+            case METAL -> Cost.of(material(), n);
+            case WOOD -> tier == 1 ? Cost.planks(n) : tier == 2 ? Cost.logs(n) : Cost.of(material(), n);
+            case HIDE -> Cost.of(material(), n);
+        };
+        return kind == PartKind.GUARD ? List.of(main, Cost.of(Items.STICK, 1)) : List.of(main);
     }
 
     /** Materials to go from {@code level} to {@code level + 1}. */
