@@ -29,8 +29,8 @@ public final class ClientRpg {
     public static final KeyMapping OPEN_WEB = new KeyMapping("key.seancraft.web", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_K, CATEGORY);
     public static final KeyMapping[] ABILITY_KEYS = {
             new KeyMapping("key.seancraft.ability1", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_Z, CATEGORY),
-            new KeyMapping("key.seancraft.ability2", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_R, CATEGORY),
-            new KeyMapping("key.seancraft.ability3", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_G, CATEGORY),
+            new KeyMapping("key.seancraft.ability2", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_X, CATEGORY),
+            new KeyMapping("key.seancraft.ability3", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_C, CATEGORY),
             new KeyMapping("key.seancraft.ability4", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_V, CATEGORY),
             new KeyMapping("key.seancraft.ability5", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_B, CATEGORY),
     };

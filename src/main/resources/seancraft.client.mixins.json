@@ -10,7 +10,8 @@
     "HumanoidModelCarryMixin",
     "ItemInHandCarryMixin",
     "ItemInHandLayerCarryMixin",
-    "LocalPlayerSprintMixin"
+    "LocalPlayerSprintMixin",
+    "RollManagerMixin"
   ],
   "injectors": {
     "defaultRequire": 1

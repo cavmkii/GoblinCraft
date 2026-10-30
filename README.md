@@ -7,7 +7,11 @@ Everyone needs the mod, the server and every player.
 ## Install
 
 1. Install [Fabric Loader](https://fabricmc.net/use/installer/) for **1.21.1**.
-2. Put [Fabric API](https://modrinth.com/mod/fabric-api) (the 1.21.1 build) and `seancraft-<version>.jar` in your `mods` folder.
+2. Put these in your `mods` folder, all the 1.21.1 Fabric builds:
+   - [Fabric API](https://modrinth.com/mod/fabric-api)
+   - [Better Combat](https://modrinth.com/mod/better-combat), which also needs [Player Animator](https://modrinth.com/mod/playeranimator) and [Cloth Config](https://modrinth.com/mod/cloth-config)
+   - [Combat Roll](https://modrinth.com/mod/combat-roll)
+   - `seancraft-<version>.jar`
 3. Start a **new world**. Spawn points are only built in new worlds.
 
 To build the jar yourself you need JDK 21. Run `./gradlew build`, and the jar shows up in `build/libs/`.
@@ -19,7 +23,8 @@ To build the jar yourself you need JDK 21. Run `./gradlew build`, and the jar sh
 | E or J | Inventory screen (GEAR tab) |
 | H | Inventory screen, STATUS tab |
 | K | Inventory screen, WEB tab (passive tree) |
-| Z, R, G, V, B | Active skills in your 5 ability slots |
+| Z, X, C, V, B | Active skills in your 5 ability slots |
+| R | Dodge roll (Combat Roll) |
 | T (over an item, in the inventory screen) | Adds it to your gather list |
 
 The inventory screen has five tabs: GEAR, CRAFTING, SKILLS, STATUS and WEB. Creative mode keeps the vanilla inventory.
@@ -42,6 +47,18 @@ The inventory screen has five tabs: GEAR, CRAFTING, SKILLS, STATUS and WEB. Crea
   | Medstation | Unlocks meds; bleeds stop and fractures heal in the hideout |
   | Perimeter | Bigger hideout radius |
   | Intel center | More calm time per raid; warns you about hunting parties |
+
+### Combat
+
+Swings and rolls come from Better Combat and Combat Roll. SeanCraft puts a price on them.
+
+- **Stamina.** Everyone has 100. The bar sits right of the hotbar.
+  - A swing costs a quarter of the weapon's damage, times 5. An iron sword is 7.5 a swing.
+  - A roll costs 20.
+  - Stamina refills at 25 a second, but only after a second without spending any. Keep swinging and it never refills.
+- **Running dry.** A swing you start with too little stamina does half damage. At 0 you can't sprint or roll until the bar is back to 25.
+- **Rolling.** For the first 0.4 seconds of a roll, attacks (hits, arrows, explosions) can't touch you. Falls, fire, lava, bleeding and poison still can. You can't roll in the middle of a swing, and there's a 0.75 second wait between rolls. Rolls don't use hunger.
+- **Swords** made at the Weapon Bench swing three times in a combo: two side slashes and a harder third slash.
 
 ### Inventory
 
@@ -172,9 +189,10 @@ There's only ever one Joe and one Sean, and they're not always around. Each visi
 ## Works with
 
 - **FallingTree:** trees you chop go into your grids, and axes made from parts work with it.
+- **Better Combat and Combat Roll:** required (see Combat).
 - **Grappling Hook Mod:** needs Forge Config API Port too. Hooks go to your hotbar, and using them trains bows & crossbows.
 
-Both were checked by reading their code. Neither has been played alongside this mod yet.
+FallingTree and the Grappling Hook Mod were checked by reading their code, and neither has been played alongside this mod yet. Better Combat and Combat Roll were tested in game.
 
 ## Custom icons
 
