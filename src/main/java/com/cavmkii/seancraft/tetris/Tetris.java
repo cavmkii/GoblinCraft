@@ -1410,6 +1410,47 @@ public final class Tetris {
         rt(player).dirty = true;
     }
 
+    /**
+     * Death in a boss fight: a random share of the grid stacks, the hotbar, armor and offhand is lost, and the rest drops
+     * where the player fell. The secure pouch is kept. Returns how many stacks were lost.
+     */
+    public static int onBossDeath(ServerPlayer player, float share) {
+        InvData data = data(player);
+        List<ItemStack> carried = new ArrayList<>();
+        for (GridId id : AUTO) {
+            data.list(id).forEach(p -> carried.add(p.stack));
+            data.list(id).clear();
+        }
+        carried.addAll(data.unsorted);
+        data.unsorted.clear();
+        for (int i = 0; i < 9; i++) {
+            carried.add(rt(player).craft.get(i));
+            rt(player).craft.set(i, ItemStack.EMPTY);
+        }
+        net.minecraft.world.entity.player.Inventory inv = player.getInventory();
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            carried.add(inv.getItem(i));
+            inv.setItem(i, ItemStack.EMPTY);
+        }
+        carried.add(data.rig);
+        carried.add(data.backpack);
+        data.rig = ItemStack.EMPTY;
+        data.backpack = ItemStack.EMPTY;
+        int lost = 0;
+        for (ItemStack s : carried) {
+            if (s.isEmpty()) {
+                continue;
+            }
+            if (player.getRandom().nextFloat() < share) {
+                lost++;
+            } else {
+                player.drop(s, true, false);
+            }
+        }
+        rt(player).dirty = true;
+        return lost;
+    }
+
     // ================================================================== crafting
 
     static boolean nearTable(ServerPlayer player) {

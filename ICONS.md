@@ -48,4 +48,6 @@ Items without a PNG keep their stand-in, so you can add them one at a time.
 
 **Raid:** `fire_arrow` (blocks: `fob_table`)
 
+**Bosses:** `mark_totem`, `trophy_old_salt`, `marks_reel` (blocks: `summoning_pedestal`, `trophy_rack`)
+
 **Blocks** (as items): `hideout_bench`, `weapon_bench`, `altar_of_regret`. These show the block model in your inventory now, and a PNG replaces that with a flat icon.

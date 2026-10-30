@@ -17,7 +17,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * /seancraft where | summon joe|sean | babywars start|stop | reload | injure <part> <kind> [percent]
+ * /seancraft where | summon joe|sean | babywars start|stop | pedestal | reload | injure <part> <kind> [percent]
  */
 public final class GoblinCommands {
     private GoblinCommands() {}
@@ -32,6 +32,7 @@ public final class GoblinCommands {
                         .then(Commands.literal("start").executes(GoblinCommands::startWar))
                         .then(Commands.literal("stop").executes(ctx -> reply(ctx,
                                 director(ctx).war.end("An admin called off the Baby Wars.") ? "Calling off the Baby Wars." : "No war is running."))))
+                .then(Commands.literal("pedestal").requires(src -> src.hasPermission(2)).executes(GoblinCommands::pedestal))
                 .then(Commands.literal("reload").requires(src -> src.hasPermission(2))
                         .executes(ctx -> reply(ctx, Cfg.load() + "\n" + JoeLines.load())))
                 .then(Commands.literal("injure").requires(src -> src.hasPermission(2))
@@ -69,6 +70,15 @@ public final class GoblinCommands {
 
     private static WorldDirector director(CommandContext<CommandSourceStack> ctx) {
         return WorldDirector.get();
+    }
+
+    /** Until boss dungeons exist: put a Summoning Pedestal under your feet, as the middle of a boss ring. */
+    private static int pedestal(CommandContext<CommandSourceStack> ctx) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        net.minecraft.server.level.ServerPlayer player = ctx.getSource().getPlayerOrException();
+        net.minecraft.core.BlockPos pos = player.blockPosition().below();
+        player.serverLevel().setBlockAndUpdate(pos, com.cavmkii.seancraft.boss.BossContent.PEDESTAL.defaultBlockState());
+        player.teleportTo(player.getX(), pos.getY() + 1, player.getZ());
+        return reply(ctx, "Summoning Pedestal placed. Use a boss totem on it; the fight ring is 40 blocks across.");
     }
 
     private static int reply(CommandContext<CommandSourceStack> ctx, String text) {

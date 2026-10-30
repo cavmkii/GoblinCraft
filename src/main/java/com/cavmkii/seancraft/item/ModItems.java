@@ -68,6 +68,11 @@ public final class ModItems {
                         output.accept(com.cavmkii.seancraft.tarkov.TarkovContent.HIDEOUT_BENCH_ITEM);
                         output.accept(com.cavmkii.seancraft.tarkov.TarkovContent.FOB_TABLE_ITEM);
                         output.accept(ModItems.FIRE_ARROW);
+                        output.accept(com.cavmkii.seancraft.boss.BossContent.TROPHY_RACK_ITEM);
+                        output.accept(com.cavmkii.seancraft.boss.BossContent.MARK_TOTEM);
+                        output.accept(com.cavmkii.seancraft.boss.BossContent.PEDESTAL_ITEM);
+                        output.accept(com.cavmkii.seancraft.boss.BossContent.TROPHY_OLD_SALT);
+                        output.accept(com.cavmkii.seancraft.boss.BossContent.MARKS_REEL);
                         output.accept(com.cavmkii.seancraft.tarkov.TarkovContent.SECURE_BETA);
                         output.accept(com.cavmkii.seancraft.tarkov.TarkovContent.SECURE_GAMMA);
                         output.accept(com.cavmkii.seancraft.tarkov.TarkovContent.SECURE_KAPPA);

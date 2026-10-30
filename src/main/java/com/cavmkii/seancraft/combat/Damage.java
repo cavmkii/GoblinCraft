@@ -106,7 +106,7 @@ public final class Damage {
 
     public static void init() {
         ServerEntityEvents.ENTITY_LOAD.register((entity, level) -> {
-            if (entity instanceof LivingEntity living && !(entity instanceof Player)) {
+            if (entity instanceof LivingEntity living && !(entity instanceof Player) && !(entity instanceof com.cavmkii.seancraft.boss.BossEntity)) {
                 scaleHealth(living);
             }
         });
@@ -161,11 +161,15 @@ public final class Damage {
             // Bleeding is already sized to the player's health.
             return amount;
         }
-        amount *= SCALE;
+        // Boss attacks are written on SeanCraft's scale already (8.4.4).
+        com.cavmkii.seancraft.boss.BossEntity boss = source.getEntity() instanceof com.cavmkii.seancraft.boss.BossEntity b ? b : null;
+        if (boss == null) {
+            amount *= SCALE;
+        }
         if (source.is(DamageTypeTags.BYPASSES_INVULNERABILITY)) {
             return amount;
         }
-        Split split = split(source);
+        Split split = boss != null && boss.dealing != null ? fromMap(boss.dealing) : split(source);
         BodyPart part = null;
         if (victim instanceof ServerPlayer player) {
             part = Health.locate(player, source, source.is(DamageTypeTags.IS_FALL));
@@ -205,8 +209,14 @@ public final class Damage {
         return total;
     }
 
+    private static Split fromMap(java.util.Map<Type, Float> shares) {
+        Split split = new Split();
+        shares.forEach(split::set);
+        return split;
+    }
+
     /** The type split for a hit, or null for damage with no type (drowning, starving, the void). */
-    static Split split(DamageSource source) {
+    public static Split split(DamageSource source) {
         Entity direct = source.getDirectEntity();
         Entity attacker = source.getEntity();
         if (source.is(DamageTypeTags.IS_FIRE) || direct instanceof SmallFireball) {
@@ -313,6 +323,9 @@ public final class Damage {
      * hurts the undead and players; chop and pickaxe only work on things made of wood and stone.
      */
     static float resistance(LivingEntity victim, Type type) {
+        if (victim instanceof com.cavmkii.seancraft.boss.BossEntity boss) {
+            return boss.resistance(type);
+        }
         if (victim instanceof Player) {
             return type == Type.CHOP || type == Type.PICKAXE ? 0 : 1;
         }

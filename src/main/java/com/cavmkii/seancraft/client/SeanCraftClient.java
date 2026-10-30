@@ -46,6 +46,7 @@ public final class SeanCraftClient implements ClientModInitializer {
         ClientRpg.init();
         ClientTarkov.init();
         com.cavmkii.seancraft.client.food.ClientFood.init();
+        com.cavmkii.seancraft.client.boss.ClientBoss.init();
         com.cavmkii.seancraft.client.carry.ClientCarry.init();
         net.minecraft.client.gui.screens.MenuScreens.register(com.cavmkii.seancraft.parts.PartItems.BENCH_MENU,
                 com.cavmkii.seancraft.client.parts.WeaponBenchScreen::new);
