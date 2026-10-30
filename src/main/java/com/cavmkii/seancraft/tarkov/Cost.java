@@ -33,6 +33,6 @@ public record Cost(Item item, TagKey<Item> tag, int count, String label) {
         if (item != null) {
             return item;
         }
-        return tag == ItemTags.LOGS ? Items.OAK_LOG : tag == ItemTags.PLANKS ? Items.OAK_PLANKS : Items.BARRIER;
+        return tag == ItemTags.LOGS ? Items.OAK_LOG : tag == ItemTags.PLANKS ? Items.OAK_PLANKS : tag == ItemTags.COALS ? Items.COAL : Items.BARRIER;
     }
 }

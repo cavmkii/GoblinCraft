@@ -65,6 +65,10 @@ public final class Tarkov {
         int announcedThreat;
         long nextWave;
         long lastRaidTicks;
+        Distance band;
+        /** Raid time paused by FOB tables so far this raid. */
+        long fobUsedTicks;
+        long lastHurt = Long.MIN_VALUE / 2;
     }
 
     private static final Map<UUID, Runtime> RUNTIME = new HashMap<>();
@@ -110,6 +114,19 @@ public final class Tarkov {
             rt.announcedThreat = 0;
         });
         ServerEntityEvents.ENTITY_LOAD.register(Tarkov::rollElite);
+        net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents.AFTER_DAMAGE.register((entity, source, base, taken, blocked) -> {
+            if (entity instanceof ServerPlayer player) {
+                runtime(player).lastHurt = player.serverLevel().getGameTime();
+            }
+        });
+        // Only a bed in a hideout sets your respawn point (2.5), so a bed beside a boss arena doesn't skip the trip back.
+        net.fabricmc.fabric.api.entity.event.v1.EntitySleepEvents.ALLOW_SETTING_SPAWN.register((player, sleepingPos) -> {
+            if (!(player instanceof ServerPlayer sp) || Hideouts.at(sp.serverLevel(), Vec3.atCenterOf(sleepingPos)) != null) {
+                return true;
+            }
+            sp.displayClientMessage(Component.literal("This bed isn't in a hideout, so it doesn't set your spawn.").withStyle(ChatFormatting.GRAY), true);
+            return false;
+        });
 
         ServerPlayNetworking.registerGlobalReceiver(TarkovNet.HideoutAction.TYPE, (payload, ctx) -> {
             if (payload.kind() >= 0) {
@@ -162,15 +179,24 @@ public final class Tarkov {
         TarkovData data = data(player);
 
         if (now < rt.graceUntil) {
-            ServerPlayNetworking.send(player, new TarkovNet.RaidState(0, 0, 0, -1));
+            ServerPlayNetworking.send(player, new TarkovNet.RaidState(0, 0, 0, -1, 0, -1, false));
             return;
         }
+
+        Distance band = Distance.at(level, player.position());
+        if (rt.band != null && band != rt.band && Cfg.distanceScaling) {
+            title(player, band.label.toUpperCase(java.util.Locale.ROOT), band == Distance.HEARTLAND ? "Monsters here are ordinary"
+                    : String.format("Monsters: +%d%% health, +%d%% damage", Math.round(band.health * 100), Math.round(band.damage * 100)),
+                    band.ordinal() > rt.band.ordinal() ? ChatFormatting.GOLD : ChatFormatting.GREEN);
+        }
+        rt.band = band;
 
         boolean atSpawn = home == null && SpawnPoints.safe(level, player.position());
         boolean inRaid = home == null && !atSpawn;
         if (rt.inRaid == null || rt.inRaid != inRaid) {
             if (inRaid) {
                 rt.raidStart = now;
+                rt.fobUsedTicks = 0;
                 rt.announcedThreat = 0;
                 title(player, "RAID STARTED", "Only your secure pouch is safe", ChatFormatting.RED);
             } else if (rt.inRaid != null) {
@@ -184,14 +210,25 @@ public final class Tarkov {
             if (home.level(Module.MEDSTATION) >= 3) {
                 player.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 60, 0, true, false, true));
             }
-            ServerPlayNetworking.send(player, new TarkovNet.RaidState(1, 0, 0, -1));
+            ServerPlayNetworking.send(player, new TarkovNet.RaidState(1, 0, 0, -1, band.ordinal(), -1, false));
             return;
         }
         if (atSpawn) {
-            ServerPlayNetworking.send(player, new TarkovNet.RaidState(3, 0, 0, -1));
+            ServerPlayNetworking.send(player, new TarkovNet.RaidState(3, 0, 0, -1, band.ordinal(), -1, false));
             return;
         }
 
+        // The Frontier, the Far lands and the Nether start at threat level 2 (2.3.1).
+        long headStart = (long) (Distance.HEAD_START_MINUTES * 1200);
+        if ((band.headStart || level.dimension() == Level.NETHER) && Cfg.raidHostility && now - rt.raidStart < headStart) {
+            rt.raidStart = now - headStart;
+        }
+        boolean paused = fobPauses(player, rt, now);
+        if (paused) {
+            // This runs once a second: push the raid's start back by the second that just passed.
+            rt.raidStart += 20;
+            rt.fobUsedTicks += 20;
+        }
         long raidTicks = now - rt.raidStart;
         rt.lastRaidTicks = raidTicks;
         int threat = threat(raidTicks, data.lastIntel);
@@ -205,7 +242,25 @@ public final class Tarkov {
             rt.nextWave = now + (long) (WAVE_SECONDS[threat] * 20 * (0.8 + player.getRandom().nextDouble() * 0.4));
             sendParty(player, threat, data.lastIntel);
         }
-        ServerPlayNetworking.send(player, new TarkovNet.RaidState(2, (int) (raidTicks / 20), threat, secondsToNextThreat(raidTicks, data.lastIntel)));
+        int fobLeft = (int) Math.max(0, (fobBudgetTicks() - rt.fobUsedTicks) / 20);
+        ServerPlayNetworking.send(player, new TarkovNet.RaidState(2, (int) (raidTicks / 20), threat, secondsToNextThreat(raidTicks, data.lastIntel),
+                band.ordinal(), fobLeft, paused));
+    }
+
+    private static long fobBudgetTicks() {
+        return (long) (Cfg.fobPauseMinutes * 1200);
+    }
+
+    /**
+     * A FOB table in the player's chunk stops the raid timer (2.6), while the raid's FOB time lasts, and not with a
+     * monster within 16 blocks or for 10 seconds after the player is hurt.
+     */
+    private static boolean fobPauses(ServerPlayer player, Runtime rt, long now) {
+        if (rt.fobUsedTicks >= fobBudgetTicks() || now - rt.lastHurt < 200 || !Fobs.get(player.serverLevel()).has(player.chunkPosition())) {
+            return false;
+        }
+        return player.serverLevel().getEntitiesOfClass(Mob.class, player.getBoundingBox().inflate(16),
+                m -> m.isAlive() && m instanceof net.minecraft.world.entity.monster.Enemy).isEmpty();
     }
 
     /** Raid minute at which a threat level (1-4) starts. The Intel center pushes every level back. */
@@ -254,9 +309,13 @@ public final class Tarkov {
 
     // ================================================================== elites and hunting parties
 
-    /** Monsters appearing near a player deep in a raid may be elite: +100% health and +50% damage per star. */
+    /**
+     * Hostile mobs get tougher with distance from spawn, and near a player deep in a raid they may be elite. Both are
+     * decided once, where the mob first appears, and the mob keeps them.
+     */
     private static void rollElite(Entity entity, ServerLevel level) {
-        if (!(entity instanceof Monster mob) || entity.getTags().contains(ROLLED_TAG)) {
+        if (!(entity instanceof Mob mob) || !(entity instanceof net.minecraft.world.entity.monster.Enemy)
+                || entity.getTags().contains(ROLLED_TAG)) {
             return;
         }
         entity.addTag(ROLLED_TAG);
@@ -266,9 +325,7 @@ public final class Tarkov {
                 threat = Math.max(threat, threatFor(player));
             }
         }
-        if (threat > 0) {
-            makeElite(mob, rollStars(threat, level.random.nextDouble()));
-        }
+        scale(mob, threat > 0 ? rollStars(threat, level.random.nextDouble()) : 0, Distance.at(level, mob.position()));
     }
 
     private static int rollStars(int threat, double roll) {
@@ -278,20 +335,39 @@ public final class Tarkov {
         return roll < TWO_STAR[threat] + ONE_STAR[threat] ? 1 : 0;
     }
 
-    private static void makeElite(Mob mob, int stars) {
-        if (stars <= 0) {
-            return;
-        }
+    /** Tag recording the distance band a mob appeared in, for its XP (2.3.1). */
+    public static final String BAND_TAG = "seancraft_band_";
+
+    /**
+     * Distance and elite bonuses, added together and capped (2.3.2): each elite star is +100% health and +50% damage
+     * on top of the band's own bonus.
+     */
+    private static void scale(Mob mob, int stars, Distance band) {
+        mob.addTag(BAND_TAG + band.ordinal());
+        double healthBonus = Math.min(band.health + stars, Distance.MAX_HEALTH_MULTIPLIER - 1);
+        double damageBonus = Math.min(band.damage + stars * 0.5, Distance.MAX_DAMAGE_MULTIPLIER - 1);
         AttributeInstance health = mob.getAttribute(Attributes.MAX_HEALTH);
-        if (health != null) {
-            health.addOrReplacePermanentModifier(new AttributeModifier(SeanCraft.id("elite_health"), stars, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
+        if (health != null && healthBonus > 0) {
+            health.addOrReplacePermanentModifier(new AttributeModifier(SeanCraft.id("elite_health"), healthBonus, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
             mob.setHealth(mob.getMaxHealth());
         }
         AttributeInstance damage = mob.getAttribute(Attributes.ATTACK_DAMAGE);
-        if (damage != null) {
-            damage.addOrReplacePermanentModifier(new AttributeModifier(SeanCraft.id("elite_damage"), stars * 0.5, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
+        if (damage != null && damageBonus > 0) {
+            damage.addOrReplacePermanentModifier(new AttributeModifier(SeanCraft.id("elite_damage"), damageBonus, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
         }
-        mob.setCustomName(Component.literal("★".repeat(stars) + " ").withStyle(ChatFormatting.GOLD).append(mob.getType().getDescription()));
+        if (stars > 0) {
+            mob.setCustomName(Component.literal("★".repeat(stars) + " ").withStyle(ChatFormatting.GOLD).append(mob.getType().getDescription()));
+        }
+    }
+
+    /** XP multiplier for a killed mob, from the band it appeared in. */
+    public static float xpMultiplier(Entity mob) {
+        for (Distance band : Distance.values()) {
+            if (mob.getTags().contains(BAND_TAG + band.ordinal())) {
+                return (float) (1 + band.rewards);
+            }
+        }
+        return 1;
     }
 
     /** A few of the local biome's monsters, 30-45 blocks away, sent straight at you. */
@@ -328,7 +404,7 @@ public final class Tarkov {
             if (follow != null) {
                 follow.addOrReplacePermanentModifier(new AttributeModifier(SeanCraft.id("hunter"), 32, AttributeModifier.Operation.ADD_VALUE));
             }
-            makeElite(mob, rollStars(threat, level.random.nextDouble()));
+            scale(mob, rollStars(threat, level.random.nextDouble()), Distance.at(level, mob.position()));
             level.addFreshEntity(mob);
             mob.setTarget(player);
         }

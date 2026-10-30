@@ -1,5 +1,8 @@
 package com.cavmkii.seancraft.client.tarkov;
 
+import com.cavmkii.seancraft.Cfg;
+import com.cavmkii.seancraft.tarkov.Distance;
+
 import com.cavmkii.seancraft.tarkov.TarkovNet;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
@@ -59,7 +62,19 @@ final class RaidHud {
             return;
         }
         String time = String.format("%02d:%02d", s.raidSeconds() / 60, s.raidSeconds() % 60);
-        g.drawString(mc.font, "RAID " + time, x, y, 0xFFFF5555, true);
+        String raid = "RAID " + time;
+        g.drawString(mc.font, raid, x, y, 0xFFFF5555, true);
+        int rx = x + mc.font.width(raid) + 6;
+        if (s.band() > 0) {
+            String band = Distance.values()[Math.min(s.band(), Distance.values().length - 1)].label;
+            g.drawString(mc.font, band, rx, y, s.band() >= 2 ? 0xFFFFAA00 : 0xFFE0D080, true);
+        }
+        // FOB time left this raid, under the threat line; bright while a FOB table is holding the timer.
+        if (s.fobLeft() >= 0 && (s.fobPaused() || s.fobLeft() < Cfg.fobPauseMinutes * 60)) {
+            String fob = (s.fobPaused() ? "FOB: timer paused, " : "FOB time ") + String.format("%d:%02d", s.fobLeft() / 60, s.fobLeft() % 60)
+                    + (s.fobPaused() ? " left" : "");
+            g.drawString(mc.font, fob, x, y + 20, s.fobPaused() ? 0xFF55FF55 : 0xFF888888, true);
+        }
         StringBuilder threat = new StringBuilder("Threat ");
         for (int i = 1; i <= 4; i++) {
             threat.append(i <= s.threat() ? '■' : '□');

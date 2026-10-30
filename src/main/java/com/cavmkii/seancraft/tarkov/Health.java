@@ -47,6 +47,21 @@ public final class Health {
         boolean dirty = true;
         BodyPart chosen;
         long chosenUntil;
+        boolean resetBody;
+        /** The part and cut share the damage pipeline chose for the hit now landing (see {@link #pending}). */
+        DamageSource pendingSource;
+        BodyPart pendingPart;
+        float pendingCut = -1;
+        float pendingHealth;
+    }
+
+    /** The damage pipeline picked a part for this hit (and maybe moved it to the thorax); onHit uses the same one. */
+    public static void pending(ServerPlayer player, DamageSource source, BodyPart part, float cut) {
+        Runtime rt = rt(player);
+        rt.pendingSource = source;
+        rt.pendingPart = part;
+        rt.pendingCut = cut;
+        rt.pendingHealth = player.getHealth();
     }
 
     private static final Map<UUID, Runtime> RUNTIME = new HashMap<>();
@@ -71,7 +86,9 @@ public final class Health {
         });
         ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) -> {
             if (!alive) {
-                Body.reset(Tarkov.data(newPlayer));
+                // Not now: Fabric copies the old player's data over after this event, which would bring the
+                // destroyed parts back (and a destroyed head would kill again on every respawn). Reset next tick.
+                rt(newPlayer).resetBody = true;
             }
             rt(newPlayer).dirty = true;
         });
@@ -90,11 +107,26 @@ public final class Health {
         TarkovData d = Tarkov.data(player);
         Runtime rt = rt(player);
         float max = player.getMaxHealth();
-        float frac = taken / Math.max(1, max);
         boolean fall = source.is(DamageTypeTags.IS_FALL);
-        BodyPart part = source.is(BLEED) ? rt.bleeding : locate(player, source, fall);
+        boolean chosen = rt.pendingSource == source;
+        BodyPart part = source.is(BLEED) ? rt.bleeding : chosen ? rt.pendingPart : locate(player, source, fall);
+        float cut = chosen && rt.pendingCut >= 0 ? rt.pendingCut : cutting(source);
+        if (chosen) {
+            // What the hit really took. Fabric's figure comes before the Resistance effect, so a fully resisted
+            // fall would otherwise still break a leg.
+            taken = Math.min(taken, Math.max(0, rt.pendingHealth - player.getHealth()));
+        }
+        rt.pendingSource = null;
+        if (taken <= 0) {
+            return;
+        }
         if (part == null) {
             reconcile(player); // Fire, poison and the like spread over every part.
+            vitalGone(player, d, source);
+            return;
+        }
+        if (fall) {
+            fall(player, d, rt, taken, max);
             return;
         }
         Body.damage(d, part, taken, max);
@@ -104,31 +136,64 @@ public final class Health {
         }
         rt.dirty = true;
         reconcile(player);
+        if (vitalGone(player, d, source)) {
+            return;
+        }
         if (source.is(BLEED)) {
             return;
         }
-        if (fall) {
-            if (frac >= 0.1f && player.getRandom().nextFloat() < Math.min(0.9f, frac * 2.5f)) {
-                inflict(player, Body.FRACTURE, part, Math.min(1, Math.max(0.25f, frac * 3)));
-            }
+        // Severity is the damage the part took over its maximum (5.2): a third of a thorax is a 33% injury.
+        float severity = Math.min(1, taken / Math.max(1, max * part.share));
+        if (severity < MIN_SEVERITY) {
             return;
         }
-        Entity direct = source.getDirectEntity();
-        if (direct == null) {
+        float chance = Math.min(1, severity * 1.5f);
+        if (source.getDirectEntity() == null) {
             return;
         }
-        float cut = cutting(source);
-        float crush = 1 - cut;
-        // Severity follows the size of the hit: a graze is a 10% bleed, a big cut can be a 100% one.
-        if (frac >= 0.2f && player.getRandom().nextFloat() < Math.min(0.5f, (frac - 0.15f) * 2) * cut) {
-            inflict(player, Body.HEAVY_BLEED, part, Math.min(1, Body.HEAVY + (frac - 0.2f) * 2));
-        } else if (frac >= 0.06f && player.getRandom().nextFloat() < Math.min(0.6f, frac * 2.5f) * cut) {
-            inflict(player, Body.LIGHT_BLEED, part, Math.min(0.45f, 0.1f + frac * 2));
+        // Slash and pierce mostly bleed, blunt mostly breaks bones (9.1).
+        if (player.getRandom().nextFloat() < chance * cut) {
+            inflict(player, severity >= Body.HEAVY ? Body.HEAVY_BLEED : Body.LIGHT_BLEED, part, severity);
         }
-        if (part.limb() && frac >= 0.15f && player.getRandom().nextFloat() < Math.min(0.45f, (frac - 0.1f) * 1.5f) * crush) {
-            inflict(player, Body.FRACTURE, part, Math.min(1, 0.2f + (frac - 0.1f) * 3));
+        if (part.limb() && player.getRandom().nextFloat() < chance * (1 - cut)) {
+            inflict(player, Body.FRACTURE, part, severity);
         }
     }
+
+    /** A destroyed head or thorax kills (5.1). Returns true if it did. */
+    private static boolean vitalGone(ServerPlayer player, TarkovData d, DamageSource source) {
+        if (!player.isAlive() || player.isCreative() || (!Body.destroyed(d, BodyPart.HEAD) && !Body.destroyed(d, BodyPart.THORAX))) {
+            return false;
+        }
+        player.setHealth(0);
+        player.die(source);
+        return true;
+    }
+
+    /** A fall lands on both legs, half each, and either can break. */
+    private static void fall(ServerPlayer player, TarkovData d, Runtime rt, float taken, float max) {
+        for (BodyPart leg : new BodyPart[] {BodyPart.LEFT_LEG, BodyPart.RIGHT_LEG}) {
+            Body.damage(d, leg, taken / 2, max);
+            if (Body.destroyed(d, leg) && d.bleed[leg.ordinal()] > 0) {
+                d.bleed[leg.ordinal()] = 0;
+                Body.sync(d, leg.ordinal());
+            }
+        }
+        rt.dirty = true;
+        reconcile(player);
+        float severity = Math.min(1, taken / 2 / Math.max(1, max * BodyPart.LEFT_LEG.share));
+        if (severity < MIN_SEVERITY) {
+            return;
+        }
+        for (BodyPart leg : new BodyPart[] {BodyPart.LEFT_LEG, BodyPart.RIGHT_LEG}) {
+            if (!Body.destroyed(d, leg) && player.getRandom().nextFloat() < Math.min(0.9f, severity * 1.5f)) {
+                inflict(player, Body.FRACTURE, leg, severity);
+            }
+        }
+    }
+
+    /** Hits smaller than this share of the part they land on are grazes: they hurt but don't injure. */
+    private static final float MIN_SEVERITY = 0.08f;
 
     /** How much of a hit is cutting (bleeds) rather than crushing (fractures). */
     private static float cutting(DamageSource source) {
@@ -158,7 +223,7 @@ public final class Health {
     }
 
     /** The part a hit lands on, by height and side. Null for damage with no direction (it spreads). */
-    static BodyPart locate(ServerPlayer player, DamageSource source, boolean fall) {
+    public static BodyPart locate(ServerPlayer player, DamageSource source, boolean fall) {
         if (fall) {
             return player.getRandom().nextBoolean() ? BodyPart.LEFT_LEG : BodyPart.RIGHT_LEG;
         }
@@ -222,6 +287,11 @@ public final class Health {
             }
             TarkovData d = Tarkov.data(player);
             Runtime rt = rt(player);
+            if (rt.resetBody) {
+                rt.resetBody = false;
+                Body.reset(d);
+                rt.dirty = true;
+            }
             if (d.painkillerTicks > 0) {
                 d.painkillerTicks--;
                 if (d.painkillerTicks % 20 == 0) {

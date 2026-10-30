@@ -1,5 +1,6 @@
 package com.cavmkii.seancraft.client.tarkov;
 
+import com.cavmkii.seancraft.food.Food;
 import com.cavmkii.seancraft.tarkov.Body;
 import com.cavmkii.seancraft.tarkov.BodyPart;
 import com.cavmkii.seancraft.tarkov.Injury;
@@ -92,6 +93,38 @@ final class EffectHud {
         }
     }
 
+    /**
+     * The three food slots (design doc 11): each meal's icon with a bar for the time it has left, amber once it's
+     * fading, and empty frames for open slots. Draws upward from {@code bottom}; returns the new top.
+     */
+    private static int meals(GuiGraphics g, Minecraft mc, int x, int bottom) {
+        List<Food.Meal> meals = com.cavmkii.seancraft.client.food.ClientFood.meals;
+        if (mc.player.isCreative()) {
+            return bottom;
+        }
+        int y = bottom - ICON - 5;
+        for (int i = 0; i < Food.SLOTS; i++) {
+            int cx = x + i * (ICON + 4);
+            g.fill(cx - 1, y - 1, cx + ICON + 1, y + ICON + 4, 0x60000000);
+            if (i >= meals.size()) {
+                continue;
+            }
+            Food.Meal meal = meals.get(i);
+            g.pose().pushPose();
+            g.pose().translate(cx, y, 0);
+            g.pose().scale(ICON / 16f, ICON / 16f, 1);
+            g.renderItem(new ItemStack(meal.itemType()), 0, 0);
+            g.pose().popPose();
+            float left = meal.left() / (float) Math.max(1, meal.duration());
+            int w = Math.max(1, Math.round(ICON * left));
+            g.fill(cx, y + ICON + 1, cx + w, y + ICON + 3, meal.strength() < 1 ? 0xFFE0A030 : 0xFF60C060);
+        }
+        if (meals.isEmpty()) {
+            g.drawString(mc.font, "Hungry", x + Food.SLOTS * (ICON + 4) + 2, y + 2, 0xFFAAAAAA, true);
+        }
+        return y - 2;
+    }
+
     private record Chip(TextureAtlasSprite sprite, ItemStack item, int ticks, boolean bad) {}
 
     private static List<Chip> chips(Minecraft mc) {
@@ -156,6 +189,8 @@ final class EffectHud {
                 py += 8;
             }
         }
+
+        y = meals(g, mc, x, y);
 
         List<Chip> chips = chips(mc);
         if (chips.isEmpty()) {

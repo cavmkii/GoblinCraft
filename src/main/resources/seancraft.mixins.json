@@ -8,10 +8,12 @@
     "BrewedPotionTriggerMixin",
     "ContainerNameAccessor",
     "FurnaceAccessor",
+    "FoodDataMixin",
     "FurnaceMixin",
     "InventoryMixin",
     "LivingEntityMixin",
     "PlayerDeathMixin",
+    "PlayerEatMixin",
     "PlayerMixin",
     "PlayerProjectileMixin",
     "PotionItemMixin"

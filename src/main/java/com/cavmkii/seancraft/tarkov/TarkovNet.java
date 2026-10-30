@@ -17,14 +17,20 @@ public final class TarkovNet {
     }
 
     /** Server to client once a second: 0 unknown, 1 hideout, 2 raid, 3 spawn safe zone; raid time, threat, seconds to next threat (-1 none). */
-    public record RaidState(int state, int raidSeconds, int threat, int nextThreat) implements CustomPacketPayload {
+    /** {@code band} is a {@link Distance} ordinal; {@code fobLeft} the raid's FOB seconds left, or -1 outside a raid. */
+    public record RaidState(int state, int raidSeconds, int threat, int nextThreat, int band, int fobLeft, boolean fobPaused)
+            implements CustomPacketPayload {
         public static final Type<RaidState> TYPE = payloadType("raid_state");
         public static final StreamCodec<FriendlyByteBuf, RaidState> CODEC = StreamCodec.of((buf, p) -> {
             buf.writeVarInt(p.state);
             buf.writeVarInt(p.raidSeconds);
             buf.writeVarInt(p.threat);
             buf.writeVarInt(p.nextThreat + 1);
-        }, buf -> new RaidState(buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt() - 1));
+            buf.writeVarInt(p.band);
+            buf.writeVarInt(p.fobLeft + 1);
+            buf.writeBoolean(p.fobPaused);
+        }, buf -> new RaidState(buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt() - 1, buf.readVarInt(),
+                buf.readVarInt() - 1, buf.readBoolean()));
         @Override public Type<RaidState> type() { return TYPE; }
     }
 

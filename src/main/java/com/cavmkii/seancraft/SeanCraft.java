@@ -42,6 +42,9 @@ public final class SeanCraft implements ModInitializer {
         Tarkov.init();
         com.cavmkii.seancraft.carry.Carry.init();
         com.cavmkii.seancraft.combat.Combat.init();
+        com.cavmkii.seancraft.combat.Damage.init();
+        com.cavmkii.seancraft.food.Food.init();
+        com.cavmkii.seancraft.food.Rest.init();
         com.cavmkii.seancraft.compat.GrappleCompat.init();
 
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {

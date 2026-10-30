@@ -35,7 +35,7 @@ final class RpgHud {
         if (!any && data.nodes.isEmpty()) {
             // Nothing learned yet: just the stamina bar every swing and roll uses, and the reminder.
             int y = g.guiHeight() - 7;
-            bar(g, mc.font, x0, y, width, ClientRpg.stamina, ClientRpg.stats.maxStamina(), Resource.STAMINA.color);
+            bar(g, mc.font, x0, y, width, ClientRpg.stamina, ClientRpg.stats.maxStamina() + com.cavmkii.seancraft.client.food.ClientFood.stamina(), Resource.STAMINA.color);
             unspent(g, mc.font, x0, y - 8, data);
             return;
         }
@@ -65,7 +65,7 @@ final class RpgHud {
             float max = switch (resource) {
                 case MANA -> ClientRpg.stats.maxMana();
                 case RAGE -> ClientRpg.stats.maxRage();
-                case STAMINA -> ClientRpg.stats.maxStamina();
+                case STAMINA -> ClientRpg.stats.maxStamina() + com.cavmkii.seancraft.client.food.ClientFood.stamina();
             };
             bar(g, mc.font, x0, y, width, value, max, resource.color);
             y -= 7;

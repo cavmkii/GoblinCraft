@@ -25,6 +25,8 @@ public final class Hideouts extends SavedData {
         public long buildStarted;
         /** Materials put toward each module's next level so far, per cost line. */
         public final int[][] given = new int[Module.values().length][];
+        /** Who placed the bench; it counts against their hideout limit. Null for benches placed before owners existed. */
+        public java.util.UUID owner;
 
         Hideout(BlockPos pos) {
             this.pos = pos;
@@ -91,6 +93,57 @@ public final class Hideouts extends SavedData {
         }
     }
 
+    void setOwner(BlockPos pos, java.util.UUID owner) {
+        Hideout h = byPosIn(pos);
+        if (h != null) {
+            h.owner = owner;
+            setDirty();
+        }
+    }
+
+    /** Hideout Benches a player has placed, in every dimension. */
+    public static int ownedBy(net.minecraft.server.MinecraftServer server, java.util.UUID player) {
+        int n = 0;
+        for (ServerLevel level : server.getAllLevels()) {
+            for (Hideout h : get(level).list) {
+                if (player.equals(h.owner)) {
+                    n++;
+                }
+            }
+        }
+        return n;
+    }
+
+    /**
+     * Why a Hideout Bench can't go here, or null if it can (2.5): too close to another hideout or a spawn point, or
+     * the player already has their limit.
+     */
+    public static String placementProblem(ServerLevel level, BlockPos pos, net.minecraft.world.entity.player.Player player) {
+        if (player != null && player.isCreative()) {
+            return null;
+        }
+        double spacing = Cfg.hideoutSpacing;
+        Vec3 at = Vec3.atCenterOf(pos);
+        for (Hideout h : get(level).list) {
+            double d = Math.sqrt(Vec3.atCenterOf(h.pos).distanceToSqr(at));
+            if (d < spacing) {
+                return "Too close to another hideout (" + (int) d + " blocks; hideouts need " + (int) spacing + ").";
+            }
+        }
+        if (level.dimension() == net.minecraft.world.level.Level.OVERWORLD) {
+            for (BlockPos p : SpawnPoints.get(level).points) {
+                double d = Math.sqrt(Vec3.atCenterOf(p).distanceToSqr(at));
+                if (d < spacing) {
+                    return "Too close to a spawn point (" + (int) d + " blocks; hideouts need " + (int) spacing + ").";
+                }
+            }
+        }
+        if (player != null && ownedBy(level.getServer(), player.getUUID()) >= Cfg.maxHideouts) {
+            return "You already have " + Cfg.maxHideouts + " hideouts. Break one of your Hideout Benches to move it.";
+        }
+        return null;
+    }
+
     void remove(BlockPos pos) {
         if (list.removeIf(h -> h.pos.equals(pos))) {
             setDirty();
@@ -116,6 +169,9 @@ public final class Hideouts extends SavedData {
             h.building = c.contains("building") ? c.getInt("building") : -1;
             h.buildDone = c.getLong("buildDone");
             h.buildStarted = c.getLong("buildStarted");
+            if (c.hasUUID("owner")) {
+                h.owner = c.getUUID("owner");
+            }
             for (Module m : Module.values()) {
                 if (c.contains("given_" + m.name())) {
                     h.given[m.ordinal()] = c.getIntArray("given_" + m.name());
@@ -136,6 +192,9 @@ public final class Hideouts extends SavedData {
             c.putInt("building", h.building);
             c.putLong("buildDone", h.buildDone);
             c.putLong("buildStarted", h.buildStarted);
+            if (h.owner != null) {
+                c.putUUID("owner", h.owner);
+            }
             for (Module m : Module.values()) {
                 if (h.given[m.ordinal()] != null) {
                     c.putIntArray("given_" + m.name(), h.given[m.ordinal()]);

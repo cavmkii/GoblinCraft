@@ -12,7 +12,7 @@ public final class ClientCombat {
     private ClientCombat() {}
 
     private static float max() {
-        return ClientRpg.stats.maxStamina();
+        return ClientRpg.stats.maxStamina() + com.cavmkii.seancraft.client.food.ClientFood.stamina();
     }
 
     /** Same rule as the server: run dry and sprint and rolls stay off until the bar is back to a quarter. */

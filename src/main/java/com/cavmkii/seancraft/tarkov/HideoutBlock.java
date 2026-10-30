@@ -25,6 +25,14 @@ public class HideoutBlock extends Block {
     }
 
     @Override
+    public void setPlacedBy(Level level, BlockPos pos, BlockState state, net.minecraft.world.entity.LivingEntity placer, net.minecraft.world.item.ItemStack stack) {
+        super.setPlacedBy(level, pos, state, placer, stack);
+        if (level instanceof ServerLevel server && placer instanceof ServerPlayer player && !player.isCreative()) {
+            Hideouts.get(server).setOwner(pos, player.getUUID());
+        }
+    }
+
+    @Override
     protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean movedByPiston) {
         if (level instanceof ServerLevel server && !newState.is(this)) {
             Hideouts.get(server).remove(pos);

@@ -45,10 +45,16 @@ public final class SeanCraftClient implements ClientModInitializer {
         EntityRendererRegistry.register(RpgContent.SKILL_PROJECTILE, ctx -> new ThrownItemRenderer<>(ctx, 1.25f, true));
         ClientRpg.init();
         ClientTarkov.init();
+        com.cavmkii.seancraft.client.food.ClientFood.init();
         com.cavmkii.seancraft.client.carry.ClientCarry.init();
         net.minecraft.client.gui.screens.MenuScreens.register(com.cavmkii.seancraft.parts.PartItems.BENCH_MENU,
                 com.cavmkii.seancraft.client.parts.WeaponBenchScreen::new);
         ItemTooltipCallback.EVENT.register((stack, context, type, lines) -> {
+            com.cavmkii.seancraft.food.Food.Def meal = com.cavmkii.seancraft.food.Food.def(stack);
+            if (meal != null) {
+                lines.add(1, Component.literal(String.format("%s: +%d health, +%d stamina, %d min", meal.kind().label,
+                        Math.round(meal.health()), Math.round(meal.stamina()), Math.round(meal.ticks() / 1200f))).withStyle(ChatFormatting.GOLD));
+            }
             if (stack.getItem() instanceof com.cavmkii.seancraft.parts.PartItem part) {
                 lines.add(1, Component.literal("Level " + com.cavmkii.seancraft.parts.Parts.level(stack) + "/4  -  "
                         + part.def.kind().label + ", tier " + part.def.tier()).withStyle(ChatFormatting.GOLD));

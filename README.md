@@ -36,8 +36,22 @@ The inventory screen has five tabs: GEAR, CRAFTING, SKILLS, STATUS and WEB. Crea
 - **Spawn points.** A new world gets 3 fixed spawn points, one at world spawn and two about 400 blocks out. Each has a small shelter with 3 chests and a barrel of starting gear, and the empty ones restock every 30 minutes. New players start at a random one, and so does anyone who dies without a bed.
 - **Safe zones.** The area around a spawn point is safe, and so is your hideout. Anywhere else, you're **in raid**. The HUD in the bottom left says which one you're in, and a short banner at the top of the screen tells you when a raid starts or you extract.
 - **Threat.** The longer a raid goes, the worse it gets. Threat 1 hits at 5 minutes, 2 at 20, 3 at 40 and 4 at 60. Mobs start spawning as elites with more health and damage, and hunting parties come after you.
+- **Distance.** The further you get from world spawn, the tougher the monsters, and the more XP they give. The HUD shows which band you're in, and a banner pops up when you cross into a new one.
+
+  | Band | Distance from spawn | Monster health | Monster damage | XP |
+  |---|---|---|---|---|
+  | Heartland | 0–1,000 | normal | normal | normal |
+  | Wilds | 1,000–3,000 | +25% | +15% | +25% |
+  | Frontier | 3,000–6,000 | +50% | +30% | +50% |
+  | Far lands | 6,000+ | +100% | +50% | +100% |
+
+  Elites add on top of that, but a monster never gets past 4x health or 2.5x damage. In the Frontier and the Far lands, raids start at threat 2, and so does any raid in the Nether. Nether distances count 8x, like the travel.
+- **FOB tables.** Made at the Hideout Bench from 8 planks, 4 sticks and a campfire. While you're in the same chunk as one, the raid timer stops. Each raid only gets 15 minutes of that, shared between every table, and it fills back up when you extract. It doesn't count while a monster is within 16 blocks or for 10 seconds after you get hit. One per chunk, and not in a safe zone. It's not a safe zone itself, and it has no stash.
 - **Dying in raid.** By default you lose everything except what's in your secure pouch, and nothing drops. Dying in a safe zone is a normal death.
 - **Hideout.** Craft a Hideout Bench (3 cobblestone on top, then plank / crafting table / plank, then 3 planks) and place it. Everything within 30 blocks is your hideout. Chests and barrels inside it are your stash.
+  - Hideouts have to be at least 500 blocks from each other and from spawn points.
+  - You can have 3 Hideout Benches placed at once. Break one to move it. Anyone can use anyone's hideout as a safe zone.
+  - Only a bed inside a hideout sets your respawn point. You can still sleep in other beds.
 - **Hideout modules.** The bench builds modules, and each one takes real time. You don't need everything at once: hit CONTRIBUTE to put in whatever you have from your inventory and stash. Once it's all in, it starts building. TRACK puts what's still missing on your gather list (see below).
 - **Station tabs.** In your hideout, the Hideout Bench, Weapon Bench and crafting table screens all have tabs for each other, so you can hop between them from anywhere in the hideout without walking over. Each station shows up once it's within the hideout.
 
@@ -52,13 +66,45 @@ The inventory screen has five tabs: GEAR, CRAFTING, SKILLS, STATUS and WEB. Crea
 
 Swings and rolls come from Better Combat and Combat Roll. SeanCraft puts a price on them.
 
-- **Stamina.** Everyone has 100. The bar sits right of the hotbar.
+- **Stamina.** Everyone has 100, plus whatever your food adds. The bar sits right of the hotbar.
+  - Sprinting costs 8 a second.
   - A swing costs a quarter of the weapon's damage, times 5. An iron sword is 7.5 a swing.
   - A roll costs 20.
   - Stamina refills at 25 a second, but only after a second without spending any. Keep swinging and it never refills.
 - **Running dry.** A swing you start with too little stamina does half damage. At 0 you can't sprint or roll until the bar is back to 25.
 - **Rolling.** For the first 0.4 seconds of a roll, attacks (hits, arrows, explosions) can't touch you. Falls, fire, lava, bleeding and poison still can. You can't roll in the middle of a swing, and there's a 0.75 second wait between rolls. Rolls don't use hunger.
 - **Swords** made at the Weapon Bench swing three times in a combo: two side slashes and a harder third slash.
+- **Damage types.** Every hit is split into types:
+  - physical: slash, pierce, blunt;
+  - elemental: fire, frost, lightning, poison;
+  - spirit.
+
+  Swords are mostly slash, axes slash plus chop, maces and fists blunt, arrows and tridents pierce. Gold weapons add 15% as spirit and netherite 20% as fire, on top. Chop only hurts wood, so it does nothing to monsters.
+- **Resistances.** Skeletons take 50% from pierce and 150% from blunt. Iron golems shrug off slash and pierce. Fire does nothing to fire-immune mobs. Spirit only hurts the undead, at 150%.
+- **Armor** works per body part: your helmet only protects your head, your chestplate your body and arms, and leggings and boots your legs.
+  - A hit is multiplied by 20 / (armor + 20). Leather is 5, chainmail and gold 8, iron 12, diamond 20, netherite 25. So iron takes a third off, and diamond takes half.
+  - Each level of Protection adds 2 armor on the parts that piece covers.
+  - Pierce ignores a quarter of armor.
+  - Armor doesn't stop elemental damage. Each level of Fire, Blast or Projectile Protection gives 4 resistance points against its kind, through the same formula.
+  - Monsters' armor uses the same formula.
+- **Fire arrows.** Made at the Hideout Bench: 4 arrows, a coal or charcoal and a string make 4. They hit with pierce plus some fire, and set what they hit alight. Bows with Flame add a smaller fire share.
+
+### Food and rest
+
+- **No hunger.** You can't starve, and food doesn't heal you the vanilla way. Instead you have 3 food slots, shown above the injuries in the bottom left, each with a bar for the time it has left.
+- **Meals.** Eating something puts it in a slot for a while, adding max health, max stamina and slow health regen. Hover a food to see what it gives.
+  - Meat and stews are health food: lots of health, a little stamina.
+  - Bread, berries, fruit and honey are stamina food.
+  - Fish, pumpkin pie and golden food are balanced.
+  - Better food lasts longer (up to about 20 minutes).
+  - The bonus fades over the last quarter, and the bar turns amber, so you know it's time to eat again.
+- **Eating rules.** You can't have two of the same food at once. You can eat it again once it's half gone, which starts it over. With all 3 slots full, you wait for one to run out. You lose your meals when you die.
+- **Rested.** Stay within 4 blocks of a lit campfire, fire or furnace, under a roof, for 20 seconds without getting hurt.
+  - A Resting chip counts down while you wait.
+  - Rested gives +50% health regen, +100% stamina regen and +50% skill XP.
+  - It lasts 8 minutes, plus 1 minute for each point of comfort.
+  - Comfort is 1 for each kind of thing within 8 blocks (a fire, a bed, a carpet, a banner, a table, flowers or a flower pot), plus 1 for each module built in the hideout you're in.
+  - It works away from a hideout too, like at a FOB table, but there's usually less comfort out there.
 
 ### Inventory
 
@@ -101,8 +147,9 @@ Swings and rolls come from Better Combat and Combat Roll. SeanCraft puts a price
 
 ### Health
 
-- **Body parts.** Your health is split across 7 parts: head, thorax, stomach, two arms and two legs. Hits land on a part depending on where they came from, and falls hit your legs.
-- **Injuries.** Parts can bleed, fracture, or get destroyed. A destroyed head or thorax kills you. Bleeds and fractures have a severity from 1 to 100%, and how big the hit was decides how bad it is. Another one on the same part stacks with it. A bleed at 50% or more is a heavy bleed. Bleeding drains the part, faster the worse it is, and stops once the part is destroyed.
+- **Health is 300.** Everything is on a bigger scale than vanilla: you have 300 health, monsters have 5x their vanilla health, and all damage and healing is 5x. A bar with numbers replaces the hearts.
+- **Body parts.** Your health is split across 7 parts: head (24), thorax (54), stomach (48), two arms (42 each) and two legs (45 each). Hits land on a part depending on where they came from. Falls hit both legs, half each.
+- **Injuries.** Parts can bleed, fracture, or get destroyed. A destroyed head or thorax kills you. Bleeds and fractures have a severity from 1 to 100%: the damage the part took over its max, so a hit for a third of your thorax is a 33% injury. Small grazes don't injure. Another one on the same part stacks with it. A bleed at 50% or more is a heavy bleed. Bleeding drains the part, faster the worse it is, and stops once the part is destroyed. Hits on a destroyed arm, leg or stomach go to the thorax at 70%.
 - **What injuries do.** It's all on a sliding scale, not on or off. A limb counts as its fracture severity, or 100% if it's destroyed, and two bad legs (or arms) count for more than one.
   - **Legs:** up to 40% slower walking, slower sprinting on top of that, and up to 10% lower jumps. At 100% you can't sprint at all.
   - **Arms:** up to 40% weaker swings, 30% slower swings, and arrows or tridents fly up to 10° off line. A drawn bow also wobbles on screen.
@@ -112,7 +159,7 @@ Swings and rolls come from Better Combat and Combat Roll. SeanCraft puts a price
 - **Surgery.**
   - A **surgical kit** brings a destroyed part back, but it leaves lasting damage: that part only heals to 65% from then on, and it acts like a mild fracture for its penalties.
   - A **surgery case** (2x2, Medstation level 3, rare in chests) brings a part back to new, lasting damage and all.
-- **Locked hearts.** A destroyed part locks away its share of your hearts, and lasting damage locks part of a part's share. Food, regen and potions can't fill them. Locked hearts show up dark and crossed out.
+- **Locked health.** A destroyed part locks away its share of your health, and lasting damage locks part of a part's share. Food, regen and potions can't fill it. It shows as a dark, striped end on the health bar.
 - **On screen.**
   - Bottom left lists your injuries with their severity and what fixes them.
   - Above that, a small line shows what they're doing to you right now, like `Walk -24%  Sprint -38%  Jump -6%`. It turns cyan while painkillers are taking the edge off.
@@ -178,8 +225,11 @@ There's only ever one Joe and one Sean, and they're not always around. Each visi
 - **Config file:** `config/seancraft/seancraft.properties`. It's created on first run, and every setting has a comment. Run `/seancraft reload` after changing it.
 - **Common changes:**
   - `Raid.DeathRule`: `LOSE_EVERYTHING`, `KEEP_SECURE` (normal drops, but you keep the pouch), or `VANILLA`.
+  - `Raid.DistanceScaling`: turn the distance bands off.
+  - `Raid.HideoutSpacing` (500), `Raid.MaxHideouts` (3) and `Raid.FobPauseMinutes` (15).
   - `Raid.ThreatMinutes`: when each threat level starts (default `5,20,40,60`).
   - `Spawn.*`: number of spawn points, distance, safe radius, restock time.
+- Damage and healing are 5x vanilla, and so is monster health. Sean's and Joe's health settings are multiplied too. Minecraft caps any mob's max health at 1024, so the Wither can't reach its full 1,500.
 - **Commands:**
   - `/seancraft where` shows where Joe and Sean are.
   - `/seancraft summon joe|sean`, `/seancraft babywars start|stop` and `/seancraft reload` need op.

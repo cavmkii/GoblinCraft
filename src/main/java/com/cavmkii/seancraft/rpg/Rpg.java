@@ -62,6 +62,8 @@ public final class Rpg {
         long combatUntil;
         long parryUntil;
         int leapTicks;
+        /** Just respawned: start with full mana and stamina and no rage. */
+        boolean refill;
         Vec3 lastPos;
         boolean dirty = true;
     }
@@ -101,11 +103,8 @@ public final class Rpg {
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> markDirty(handler.player));
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> RUNTIME.remove(handler.player.getUUID()));
         ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) -> {
-            PlayerData data = data(newPlayer);
-            Stats stats = new Stats(data);
-            data.mana = stats.maxMana();
-            data.stamina = stats.maxStamina();
-            data.rage = 0;
+            // Next tick: Fabric copies the old player's data over after this event, which would undo the refill.
+            runtime(newPlayer).refill = true;
             markDirty(newPlayer);
         });
 
@@ -138,6 +137,7 @@ public final class Rpg {
         }
         PlayerData data = data(player);
         int before = data.skillLevel(skill);
+        amount *= com.cavmkii.seancraft.food.Rest.skillMultiplier(player);
         data.skillXp.merge(skill, amount, Double::sum);
         int after = data.skillLevel(skill);
         if (after != before) {
@@ -221,10 +221,16 @@ public final class Rpg {
         }
         Stats stats = rt.stats;
         long now = player.serverLevel().getGameTime();
+        if (rt.refill) {
+            rt.refill = false;
+            data.mana = stats.maxMana();
+            data.stamina = stats.maxStamina();
+            data.rage = 0;
+        }
 
         // Resources, per tick.
         data.mana = Math.min(stats.maxMana(), data.mana + stats.manaRegen() / 20f);
-        com.cavmkii.seancraft.combat.Combat.tick(player, data, stats.maxStamina());
+        com.cavmkii.seancraft.combat.Combat.tick(player, data, stats.maxStamina() + com.cavmkii.seancraft.food.Food.stamina(player));
         if (now > rt.combatUntil) {
             data.rage = Math.max(0, data.rage - 2f / 20f);
         }
@@ -334,7 +340,7 @@ public final class Rpg {
             player.setHealth(player.getMaxHealth());
         }
         data.mana = Math.min(data.mana, stats.maxMana());
-        data.stamina = Math.min(data.stamina, stats.maxStamina());
+        data.stamina = Math.min(data.stamina, stats.maxStamina() + com.cavmkii.seancraft.food.Food.stamina(player));
     }
 
     private static void setModifier(ServerPlayer player, Holder<Attribute> attribute, String name, double amount, AttributeModifier.Operation op) {

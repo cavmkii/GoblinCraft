@@ -98,6 +98,10 @@ public final class Cfg {
     /** Raid minute each threat level (1-4) starts at. */
     public static double[] threatMinutes = {5, 20, 40, 60};
     public static double sleepHealPercent = 50;
+    public static boolean distanceScaling = true;
+    public static double hideoutSpacing = 500;
+    public static int maxHideouts = 3;
+    public static double fobPauseMinutes = 15;
     public static int spawnPoints = 3;
     public static double spawnDistance = 400;
     public static double spawnRadius = 24;
@@ -176,6 +180,12 @@ public final class Cfg {
         d("Raid", "HideoutRadius", "Radius (blocks) of a Hideout Bench's safe zone before Perimeter upgrades.", v -> hideoutRadius = v, () -> hideoutRadius);
         b("Raid", "Hostility", "Threat rises the longer you stay out: elite mobs and hunting parties.", v -> raidHostility = v, () -> raidHostility);
         b("Raid", "HuntingParties", "Send hunting parties at raiding players as threat rises.", v -> huntingParties = v, () -> huntingParties);
+        b("Raid", "DistanceScaling", "Hostile mobs get more health, damage and XP the further from world spawn they appear (Heartland, Wilds, Frontier, Far lands).",
+                v -> distanceScaling = v, () -> distanceScaling);
+        d("Raid", "HideoutSpacing", "A Hideout Bench can't be placed within this many blocks of another hideout or a spawn point.", v -> hideoutSpacing = v, () -> hideoutSpacing);
+        i("Raid", "MaxHideouts", "How many Hideout Benches each player can have placed at once.", v -> maxHideouts = v, () -> maxHideouts);
+        d("Raid", "FobPauseMinutes", "Minutes of paused raid time each raid gets from FOB tables, shared between all of them. Refills when you extract.",
+                v -> fobPauseMinutes = v, () -> fobPauseMinutes);
         i("Spawn", "Points", "Fixed spawn points (with a supply shelter) built in a new world. 0 turns them off. Only read when the world is first started.", v -> spawnPoints = v, () -> spawnPoints);
         d("Spawn", "Distance", "How far the other spawn points are from world spawn (blocks).", v -> spawnDistance = v, () -> spawnDistance);
         d("Spawn", "Radius", "Safe radius around each spawn point: no raid starts until you leave it.", v -> spawnRadius = v, () -> spawnRadius);
